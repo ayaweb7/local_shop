@@ -1,0 +1,136 @@
+## Мой проект - Local Shop.
+
+## 📁 Структура проекта
+
+glasspen_bot/			# Корень проекта (корневая директория)
+│
+├── src/							# Основной код проекта (source)
+│	├── bots/						# Менеджер ботов
+│src/	├── glasspen_bot/			# Бот Стеклянного Пера
+│bots/	│	├── handlers/
+│	│	│	│	├── __init__.py
+│	│	│	│	├── commands.py				# Обработчики основных команд /start, /help
+│	│	│	│	├── faq_handlers.py			# FAQ обработчик
+│	│	│	│	├── admin_commands.py		# Admin-команды
+│	│	│	│	└── question_handlers.py	# обработчик вопросов автору
+│	│	│	│
+│   │	│	├── keyboards/
+│	│	│	│	├── __init__.py
+│	│	│	│	├── main_menu.py			# Навигация, кнопки
+│	│	│	│	├── faq_menu.py				# faq-кнопки
+│	│	│	│	└── inline_keyboards.py		# утилиты inline-кнопок
+│	│	│	│
+│	│	│	├── __init__.py
+│	│	│	├── states.py			# перенос FSM состояния из glasspen_bot
+│	│	│	└── bot.py				# Основной файл бота
+│	│	│
+│	│	│
+│src/	├── helper_bot/				# Бот Помощника
+│bots/│	│	├── handlers/
+│	│	│	│	├── __init__.py
+│	│	│	│	└── commands.py		# Обработчики команд
+│	│	│	│
+│   │	│	├── keyboards/
+│	│	│	│	├── __init__.py
+│	│	│	│	├── main_menu.py		# Навигация, кнопки
+│	│	│	│	└── inline_keyboards.py	# inline-кнопки
+│	│	│	│
+│	│	│	├── __init__.py
+│	│	│	└── bot.py				# Основной файл бота
+│	│	│
+│	│	│		
+│	│	└── __init__.py
+│	│	
+│	├── bot/				# Рабочий вариант helper бота
+│src/	├── handlers/
+│bot/	│	├── __init__.py
+│	│	│	└── command_handlers.py
+│	│	│
+│	│	├── keyboards/
+│	│	│	├── __init__.py
+│	│	│	└── main_menu.py
+│	│	│
+│	│	├── utils/
+│	│	│	└── __init__.py
+│	│	│
+│   │	├── __init__.py
+│   │	├── bot.py
+│   │	└── core.py
+│	│
+│	├── config/
+│src/	└── __init__.py
+│	│
+│	├── core/
+│src/	├── __init__.py
+│core/	├── base_bot.py				# Базовый класс бота
+│	│	├── bot_manager.py			# Менеджер ботов
+│	│	├── note_manager.py			# Менеджер данных/записей (для helper_bot)
+│	│	├── question_manager.py		# Менеджер вопросов (для glasspen_bot)
+│	│	└── models.py				# Основная модель данных/записей
+│	│
+│	├── utils/
+│src/	└── logging_config.py
+│	│
+│	├── glasspen_bot.py		# Исходный код (для bot/)
+│	├── main.py				# Основной код (для bots/)
+│	└── __init__.py
+│
+│
+├── tests/						# Директория для тестов
+│   ├── test_glasspen_bot.py 	# Файл с тестами для glasspen_bot.py
+│   └── test_main.py 			# Файл с тестами для main.py
+│
+│
+├── docs/			# Документация проекта
+│   └── README.md	# Основной файл документации (можно создать позже)
+│
+│
+├── data/			# Директория для входных/выходных данных, датасетов
+│	│
+│   ├── input/
+│data/	└── 
+│	│
+│   ├── output/
+│	│	└── 
+│	│
+│   ├── bot.log			# Логгирование процессов
+│   ├── questions.json	# Временное хранилище для вопросов
+│   └── notes.json		# Временное хранилище записей
+│
+│
+├── logs/			# Директория для логов
+│   └── bot.log		# Логгирование процессов
+│
+│
+├── notebooks/		# Эксперименты в Jupyter Notebooks (Опционально)
+│   └── glasspen_bot.ipynb		# Тестирование
+│
+│
+*****glasspen_bot/files*
+│
+│
+├──  __init__.py
+├── .gitignore		# Файл, для инструкций отслеживания файлов Git
+├── .env.example	# Шаблон файла с секретными переменными
+├── .env			# Для секретных переменных (Опционально, но рекомендуется)
+├── requirements.txt # Список зависимостей (библиотек) проекта
+├── config.py		# Файл конфигурации (настройки, константы)
+├── run.py			# Специальный файл для запуска из корня проекта (Опционально)
+├── setup.py		# Файл установки проекта в виртуальное окружение (Опционально)
+└── README.md		# Главное описание проекта (видно на GitHub)
+
+
+## 🚀 Быстрый старт
+
+1. Клонируйте репозиторий:
+```bash
+git clone https://github.com/ВАШ_НИКНЕЙМ/glasspen_bot.git
+cd glasspen_bot
+```
+
+2. Создайте виртуальное окружение:
+```bash
+python -m venv venv
+source venv/Scripts/activate  # Windows (Git Bash)
+# или: source venv/bin/activate  # macOS/Linux
+```
