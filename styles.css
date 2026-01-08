@@ -1,0 +1,561 @@
+/* ================================================== */
+/* SHOPPING TRACKER - ОСНОВНЫЕ СТИЛИ */
+/* ================================================== */
+
+/* === СБРОС И БАЗОВЫЕ СТИЛИ === */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f8f9fa;
+    line-height: 1.6;
+    color: #333;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* === НАВИГАЦИЯ И КНОПКИ === */
+.app-nav {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+    padding: 15px;
+    background: #e9ecef;
+    border-radius: 6px;
+}
+
+/* Базовые стили кнопок */
+.btn-primary {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+    transform: translateY(-1px);
+}
+
+/* === ТАБЛИЦЫ TABULATOR === */
+#purchases-table {
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    margin-top: 20px;
+    background: white;
+}
+
+.tabulator {
+    font-size: 14px;
+}
+
+.tabulator .tabulator-header {
+    background: #f8f9fa;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.tabulator .tabulator-row {
+    border-bottom: 1px solid #e9ecef;
+    transition: background-color 0.2s ease;
+}
+
+.tabulator .tabulator-row:hover {
+    background-color: #f8f9fa;
+}
+
+.tabulator .tabulator-cell {
+    padding: 8px 12px;
+}
+
+/* === АДМИН-ПАНЕЛЬ === */
+.tab-navigation {
+    display: flex;
+    gap: 5px;
+    margin: 20px 0;
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.tab-button {
+    padding: 10px 20px;
+    border: 1px solid #ddd;
+    background: #f5f5f5;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+    transition: all 0.3s ease;
+    border-bottom: none;
+    font-size: 14px;
+}
+
+.tab-button:hover {
+    background: #e9ecef;
+}
+
+.tab-button.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.tab-content {
+    display: none;
+    padding: 20px 0;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+.controls {
+    margin: 20px 0;
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    flex-wrap: wrap;
+}
+
+/* Кнопки действий в таблицах админки */
+.edit-btn, .delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px 8px;
+    font-size: 16px;
+    margin: 0 2px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.edit-btn:hover {
+    background: #007bff;
+    color: white;
+    transform: scale(1.1);
+}
+
+.delete-btn:hover {
+    background: #dc3545;
+    color: white;
+    transform: scale(1.1);
+}
+
+/* === СОСТОЯНИЯ ЗАГРУЗКИ === */
+#loading {
+    text-align: center;
+    padding: 40px;
+    font-size: 18px;
+    color: #6c757d;
+    background: #f8f9fa;
+    border-radius: 6px;
+    margin: 20px 0;
+    border: 2px dashed #dee2e6;
+}
+
+/* === УВЕДОМЛЕНИЯ (для будущего использования) === */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 4px;
+    color: white;
+    z-index: 1000;
+    animation: slideInRight 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.notification.success { background: #28a745; }
+.notification.error { background: #dc3545; }
+.notification.info { background: #17a2b8; }
+
+/* === МОДАЛЬНЫЕ ОКНА === */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 25px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh; /* Уменьшили высоту чтобы убрать скролл */
+    overflow-y: auto;
+    position: relative;
+    animation: modalSlideIn 0.3s ease;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.close-modal {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+    transition: color 0.3s ease;
+    background: none;
+    border: none;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-modal:hover {
+    color: #333;
+    background: #f8f9fa;
+    border-radius: 50%;
+}
+
+/* ================================================== */
+/* КОМПАКТНАЯ ФОРМА ДОБАВЛЕНИЯ ПОКУПОК */
+/* ================================================== */
+
+/* Основной контейнер формы */
+.modal-content.compact-form {
+    max-width: 650px !important; /* Чуть меньше для компактности */
+    max-height: 75vh !important; /* Еще меньше высота */
+    padding: 20px !important;
+}
+
+/* Сетка формы - 4 КОЛОНКИ для числовых полей */
+.compact-form .form-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 1fr 1fr !important; /* 4 колонки */
+    gap: 10px !important;
+    margin: 15px 0 !important;
+    align-items: start;
+}
+
+/* Полноширинные элементы */
+.compact-form .form-group.full-width {
+    grid-column: 1 / -1 !important; /* Занимает все 4 колонки */
+}
+
+/* Полуширинные элементы */
+.compact-form .form-group.half-width {
+    grid-column: span 2 !important; /* Занимает 2 колонки */
+}
+
+/* Группы полей */
+.compact-form .form-group {
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Метки полей */
+.compact-form .form-group label {
+    font-size: 12px !important;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #495057;
+    display: block;
+}
+
+/* Поля ввода - КОМПАКТНЫЕ */
+.compact-form .form-group input,
+.compact-form .form-group select,
+.compact-form .form-group textarea {
+    padding: 6px 8px !important;
+    font-size: 13px !important;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+    height: 35px !important; /* Фиксированная высота */
+}
+
+.compact-form .form-group textarea {
+    height: auto !important;
+    min-height: 60px;
+    resize: vertical;
+}
+
+/* Состояния фокуса */
+.compact-form .form-group input:focus,
+.compact-form .form-group select:focus,
+.compact-form .form-group textarea:focus {
+    border-color: #007bff !important;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.1) !important;
+    outline: none;
+}
+
+/* === ЧИСЛОВЫЕ ПОЛЯ - ОСОБЫЕ СТИЛИ === */
+
+/* Убираем стрелочки в числовых полях */
+.compact-form input[type="number"] {
+    -moz-appearance: textfield !important; /* Firefox */
+    text-align: right !important;
+    font-family: 'Courier New', monospace !important;
+}
+
+.compact-form input[type="number"]::-webkit-outer-spin-button,
+.compact-form input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+
+/* Компактные числовые поля */
+#purchase-price, 
+#purchase-quantity, 
+#purchase-unit, 
+#purchase-amount {
+    grid-column: span 1 !important; /* Каждое поле занимает 1 колонку */
+}
+
+/* Специфические стили для каждого числового поля */
+#purchase-price {
+    /* Цена */
+}
+
+#purchase-quantity {
+    /* Количество */
+}
+
+#purchase-unit {
+    /* Единица измерения */
+}
+
+#purchase-amount {
+    /* Стоимость */
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+/* === ВАЛИДАЦИЯ ФОРМ === */
+.form-group.error input,
+.form-group.error select,
+.form-group.error textarea {
+    border-color: #dc3545 !important;
+    background-color: #fff5f5;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 11px !important;
+    margin-top: 3px;
+    min-height: 12px;
+    font-weight: 500;
+}
+
+/* === КНОПКИ ФОРМЫ === */
+.compact-form .form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.compact-form .btn-primary {
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+    min-width: 120px;
+}
+
+.compact-form .btn-secondary {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+}
+
+/* ================================================== */
+/* АНИМАЦИИ */
+/* ================================================== */
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+    from { 
+        transform: translateY(-50px); 
+        opacity: 0; 
+    }
+    to { 
+        transform: translateY(0); 
+        opacity: 1; 
+    }
+}
+
+@keyframes slideInRight {
+    from { 
+        transform: translateX(100%); 
+        opacity: 0; 
+    }
+    to { 
+        transform: translateX(0); 
+        opacity: 1; 
+    }
+}
+
+/* ================================================== */
+/* АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */
+/* ================================================== */
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    .container {
+        padding: 15px;
+    }
+    
+    .app-nav {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    /* Адаптивность формы */
+    .compact-form .form-grid {
+        grid-template-columns: 1fr !important; /* 1 колонка на мобильных */
+        gap: 8px !important;
+    }
+    
+    .compact-form .form-group.half-width {
+        grid-column: span 1 !important;
+    }
+    
+    .modal-content {
+        margin: 10px !important;
+        width: calc(100% - 20px) !important;
+        padding: 15px !important;
+    }
+    
+    .modal-content.compact-form {
+        max-height: 85vh !important;
+    }
+    
+    /* Адаптивные кнопки */
+    .compact-form .form-actions {
+        flex-direction: column;
+    }
+    
+    .compact-form .btn-primary,
+    .compact-form .btn-secondary {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    /* Адаптивная навигация вкладок */
+    .tab-navigation {
+        flex-direction: column;
+    }
+    
+    .tab-button {
+        border-radius: 4px;
+        margin-bottom: 5px;
+    }
+}
+
+/* Для очень маленьких экранов */
+@media (max-width: 480px) {
+    .modal-content {
+        padding: 10px !important;
+    }
+    
+    .compact-form .form-group input,
+    .compact-form .form-group select {
+        font-size: 12px !important;
+        padding: 5px 6px !important;
+    }
+}
+
+/* ================================================== */
+/* УТИЛИТАРНЫЕ СТИЛИ */
+/* ================================================== */
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+
+.mt-10 { margin-top: 10px; }
+.mb-10 { margin-bottom: 10px; }
+.mt-20 { margin-top: 20px; }
+.mb-20 { margin-bottom: 20px; }
+
+.hidden { display: none; }
+.visible { display: block; }
+
+/* Стили для отладки (можно удалить в продакшене) */
+.debug-border {
+    border: 1px solid red !important;
+}
+
+/* ************************ */
+/* Стили для кнопки расчета */
+/* ************************ */
+.calculate-btn {
+    background: #6c757d !important;
+    color: white !important;
+    border: none !important;
+    padding: 4px 8px !important;
+    border-radius: 3px !important;
+    cursor: pointer !important;
+    font-size: 11px !important;
+    transition: all 0.2s ease !important;
+}
+
+.calculate-btn:hover {
+    background: #545b62 !important;
+    transform: translateY(-1px) !important;
+}
+
+.calculation-hint {
+    font-size: 10px !important;
+    color: #6c757d !important;
+    font-style: italic !important;
+    margin-left: 5px !important;
+}

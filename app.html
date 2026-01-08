@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Мои Покупки</title>
+  <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet">
+  <link href="styles.css" rel="stylesheet"> <!-- -->
+</head>
+<body>
+  <header>
+    <h1>Мои Покупки</h1>
+	<!-- Навигация app.html -->
+	<nav class="app-nav">
+		<button id="add-purchase-btn" class="btn-primary">+ Новая покупка</button>
+		<button id="refresh-btn" class="btn-secondary">🔄 Обновить</button>
+		<button id="admin-btn" class="btn-secondary">⚙️ Админ-панель</button>
+		<button id="logout-btn" class="btn-secondary">Выйти</button>
+	</nav>
+	
+    
+  </header>
+  <main>
+    <div id="purchases-table"></div>
+    <div id="loading">Загрузка данных...</div>
+  </main>
+  
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+  <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+  
+  <!-- Форма для добавления / редактирования покупок -->
+<div id="purchase-modal" class="modal">
+    <div class="modal-content compact-form">
+        <span class="close-modal">&times;</span>
+        <h3 id="purchase-modal-title">📝 Новая покупка</h3>
+        
+        <form id="purchase-form">
+            <input type="hidden" id="purchase-id">
+            
+            <div class="form-grid">
+                <!-- Первая строка -->
+                <div class="form-group">
+                    <label>Дата покупки</label>
+                    <input type="date" id="purchase-date" required>
+                </div>
+				
+                <div class="form-group">
+                    <label>Магазин</label>
+                    <select id="purchase-store" required>
+                        <option value="">Выберите магазин</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Категория</label>
+                    <select id="purchase-category" required>
+                        <option value="">Выберите категорию</option>
+					</select>
+                </div>
+				
+                <div class="form-group">
+                    <label>Название товара</label>
+                    <input type="text" id="purchase-name" required placeholder="Например: Молоко">
+                </div>
+
+                <!-- Вторая строка - компактная для числовых полей -->
+                <div class="form-group">
+                    <label>Цена за ед. (₽)</label>
+                    <input type="number" id="purchase-price" step="0.01" min="0" required placeholder="0.00">
+                </div>
+                
+                <div class="form-group">
+                    <label>Количество</label>
+                    <input type="number" id="purchase-quantity" step="0.001" min="0.001" value="1" required placeholder="1.000">
+                </div>
+                
+                <div class="form-group">
+                    <label>Единица измерения</label>
+                    <select id="purchase-unit" required>
+                        <option value="">Единицы</option>
+					</select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Стоимость (₽)</label>
+                    <input type="number" id="purchase-amount" step="0.01" min="0" required placeholder="0.00">
+                </div>
+
+                <!-- Третья строка -->
+                <div class="form-group full-width">
+                    <label>Характеристики товара</label>
+                    <textarea id="purchase-characteristics" placeholder="Вес, объем, особенности товара..." rows="2"></textarea>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">💾 Сохранить покупку</button>
+                <button type="button" id="cancel-purchase" class="btn-secondary">Отмена</button>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

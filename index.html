@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Shopping Tracker - Вход</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="auth-container">
+    <h1>Трекер Покупок</h1>
+    <div id="login-form">
+      <h2>Вход в систему</h2>
+      <input type="email" id="email" placeholder="Email">
+      <input type="password" id="password" placeholder="Пароль">
+      <button onclick="handleLogin()">Войти</button>
+      <p id="auth-message"></p>
+    </div>
+  </div>
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+  <script src="auth.js"></script>
+  <script>
+    async function handleLogin() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const messageEl = document.getElementById('auth-message');
+      
+      const result = await window.authManager.signIn(email, password);
+      
+      if (result.success) {
+        messageEl.textContent = 'Успешный вход!';
+        messageEl.style.color = 'green';
+      } else {
+        messageEl.textContent = 'Ошибка: ' + result.error;
+        messageEl.style.color = 'red';
+      }
+    }
+  </script>
+</body>
+</html>
+

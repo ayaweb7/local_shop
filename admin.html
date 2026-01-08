@@ -1,0 +1,74 @@
+<!-- admin.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Админ-панель - Трекер покупок</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tabulator/5.4.4/css/tabulator.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Административная панель</h1>
+            <nav>
+                <button id="shops-tab" class="tab-button active">Магазины</button>
+                <button id="cities-tab" class="tab-button">Города</button>
+                <button id="categories-tab" class="tab-button">Категории</button>
+                <button id="back-to-app" class="secondary">← К приложению</button>
+                <button id="logout-btn" class="secondary">Выйти</button>
+            </nav>
+        </header>
+
+        <div id="shops-section" class="tab-content active">
+            <h2>Управление магазинами</h2>
+            <div class="controls">
+                <button id="add-shop" class="btn-primary">+ Добавить магазин</button>
+            </div>
+            <div id="shops-table"></div>
+        </div>
+
+        <div id="cities-section" class="tab-content">
+            <h2>Управление городами</h2>
+            <div class="controls">
+                <button id="add-city" class="btn-primary">+ Добавить город</button>
+            </div>
+            <div id="cities-table"></div>
+        </div>
+
+        <!-- Аналогично для категорий и других справочников -->
+    </div>
+
+    <!-- Модальные окна для форм -->
+    <div id="shop-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="shop-modal-title">Добавление магазина</h3>
+            <form id="shop-form">
+                <input type="hidden" id="shop-id">
+                <div class="form-group">
+                    <label for="shop-name">Название магазина:</label>
+                    <input type="text" id="shop-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="shop-city">Город:</label>
+                    <select id="shop-city" required>
+                        <!-- Заполнится динамически -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="shop-address">Адрес:</label>
+                    <input type="text" id="shop-address">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Сохранить</button>
+                    <button type="button" id="cancel-shop" class="btn-secondary">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tabulator/5.4.4/js/tabulator.min.js"></script>
+    <script src="auth.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
