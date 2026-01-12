@@ -1,10 +1,12 @@
-<!-- admin.html -->
+﻿<!-- admin.html -->
 <!DOCTYPE html>
 <html>
 <head>
     <title>Админ-панель - Трекер покупок</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tabulator/5.4.4/css/tabulator.min.css" rel="stylesheet">
     <link href="styles.css" rel="stylesheet">
+	<meta charset="UTF-8">
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head>
 <body>
     <div class="container">
@@ -39,36 +41,50 @@
     </div>
 
     <!-- Модальные окна для форм -->
-    <div id="shop-modal" class="modal">
-        <div class="modal-content">
-            <h3 id="shop-modal-title">Добавление магазина</h3>
-            <form id="shop-form">
-                <input type="hidden" id="shop-id">
-                <div class="form-group">
-                    <label for="shop-name">Название магазина:</label>
-                    <input type="text" id="shop-name" required>
-                </div>
-                <div class="form-group">
-                    <label for="shop-city">Город:</label>
-                    <select id="shop-city" required>
-                        <!-- Заполнится динамически -->
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="shop-address">Адрес:</label>
-                    <input type="text" id="shop-address">
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn-primary">Сохранить</button>
-                    <button type="button" id="cancel-shop" class="btn-secondary">Отмена</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    <!-- В admin.html замените форму магазина -->
+	<div id="shop-modal" class="modal">
+		<div class="modal-content">
+			<h3 id="shop-modal-title">Добавление магазина</h3>
+			<form id="shop-form" class="admin-form">
+				<input type="hidden" id="shop-id">
+				
+				<div class="form-group">
+					<label for="shop-name">Название магазина *</label>
+					<input type="text" id="shop-name" required>
+				</div>
+				
+				<div class="form-group">
+					<label for="shop-city">Город *</label>
+					<select id="shop-city" required>
+						<!-- Заполнится динамически -->
+					</select>
+				</div>
+				
+				<div class="form-group">
+					<label for="shop-street">Улица *</label>
+					<input type="text" id="shop-street" required>
+				</div>
+				
+				<div class="form-group">
+					<label for="shop-house">Дом *</label>
+					<input type="text" id="shop-house" required>
+				</div>
+				
+				<div class="form-group">
+					<label for="shop-phone">Телефон</label>
+					<input type="text" id="shop-phone">
+				</div>
+				
+				<div class="form-actions">
+					<button type="submit" class="btn-primary">Сохранить</button>
+					<button type="button" id="cancel-shop" class="btn-secondary">Отмена</button>
+				</div>
+			</form>
+		</div>
+	</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tabulator/5.4.4/js/tabulator.min.js"></script>
-    <script src="auth.js"></script>
-    <script src="admin.js"></script>
+    <script src="api.js"></script>
+	<script src="admin.js"></script>
 </body>
 </html>

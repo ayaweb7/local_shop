@@ -1,9 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
   <title>Мои Покупки</title>
   <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet">
   <link href="styles.css" rel="stylesheet"> <!-- -->
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head>
 <body>
   <header>
@@ -23,9 +25,8 @@
     <div id="loading">Загрузка данных...</div>
   </main>
   
-  <script src="https://unpkg.com/@supabase/supabase-js"></script>
   <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
-  <script src="auth.js"></script>
+  <script src="api.js"></script>
   <script src="app.js"></script>
   
   <!-- Форма для добавления / редактирования покупок -->
@@ -62,8 +63,14 @@
                     <label>Название товара</label>
                     <input type="text" id="purchase-name" required placeholder="Например: Молоко">
                 </div>
+				
+				<!-- Вторая строка -->
+                <div class="form-group full-width">
+                    <label>Характеристики товара</label>
+                    <textarea id="purchase-characteristics" placeholder="Вес, объем, особенности товара..." rows="2"></textarea>
+                </div>
 
-                <!-- Вторая строка - компактная для числовых полей -->
+                <!-- Третья строка - компактная для числовых полей -->
                 <div class="form-group">
                     <label>Цена за ед. (₽)</label>
                     <input type="number" id="purchase-price" step="0.01" min="0" required placeholder="0.00">
@@ -86,11 +93,7 @@
                     <input type="number" id="purchase-amount" step="0.01" min="0" required placeholder="0.00">
                 </div>
 
-                <!-- Третья строка -->
-                <div class="form-group full-width">
-                    <label>Характеристики товара</label>
-                    <textarea id="purchase-characteristics" placeholder="Вес, объем, особенности товара..." rows="2"></textarea>
-                </div>
+                
             </div>
             
             <div class="form-actions">
