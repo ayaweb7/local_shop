@@ -677,3 +677,87 @@ body {
     margin-bottom: 20px;
     color: #333;
 }
+
+/* Панель фильтров */
+.filters-panel {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 150px;
+}
+
+.filter-group label {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #495057;
+}
+
+.filter-group select,
+.filter-group input {
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.filter-group input[type="date"] {
+    width: 120px;
+}
+
+/* Панель статистики */
+.stats-panel {
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stats-panel h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.category-stat {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.category-stat:last-child {
+    border-bottom: none;
+}
+
+.category-icon {
+    font-size: 20px;
+    margin-right: 10px;
+    width: 30px;
+    text-align: center;
+}
+
+.category-name {
+    flex: 1;
+}
+
+.category-amount {
+    font-weight: 600;
+    color: #28a745;
+}
+
+.category-count {
+    color: #6c757d;
+    font-size: 12px;
+    margin-left: 10px;
+}

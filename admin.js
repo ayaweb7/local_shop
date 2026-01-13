@@ -3,6 +3,7 @@ class AdminPanel {
     constructor() {
         this.citiesCache = [];
         this.currentTab = 'shops';
+		this.categoriesCache = [];
 		
 		// Проверяем, что apiClient загружен
         if (!window.apiClient) {
@@ -80,6 +81,30 @@ class AdminPanel {
 			e.preventDefault();
 			this.saveShop();
 		});
+		
+		// Обработчики для категорий (переключение вкладок и кнопка добавления)
+		document.getElementById('categories-tab').addEventListener('click', () => this.switchTab('categories'));
+		document.getElementById('add-category').addEventListener('click', () => this.showCategoryForm());
+		
+		// Обработчик формы категорий
+		document.getElementById('category-form').addEventListener('submit', (e) => {
+			e.preventDefault();
+			this.saveCategory();
+		});
+
+		// Кнопка отмены в форме категорий
+		document.getElementById('cancel-category').addEventListener('click', () => {
+			document.getElementById('category-modal').style.display = 'none';
+		});
+
+		// Закрытие модальных окон по клику вне
+		document.querySelectorAll('.modal').forEach(modal => {
+			modal.addEventListener('click', (e) => {
+				if (e.target === modal) {
+					modal.style.display = 'none';
+				}
+			});
+		});
     }
 
     // ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК
@@ -102,7 +127,9 @@ class AdminPanel {
             this.loadShopsData();
         } else if (tabName === 'cities') {
             this.loadCitiesData();
-        }
+        } else if (tabName === 'categories') {
+			this.loadCategoriesData();
+}
     }
 
     // ЗАГРУЗКА НАЧАЛЬНЫХ ДАННЫХ
@@ -582,6 +609,175 @@ class AdminPanel {
             this.showNotification('Ошибка: ' + error.message, 'error');
         }
     }
+	
+	// ===== МЕТОДЫ ДЛЯ КАТЕГОРИЙ =====
+
+	async loadCategoriesData() {
+		try {
+			console.log('Загрузка категорий...');
+			
+			const response = await apiClient.request('categories', 'GET');
+			const categories = response.data || [];
+			
+			console.log('Загружено категорий:', categories.length);
+			this.displayCategoriesTable(categories);
+			this.categoriesCache = categories; // Сохраняем в кэш
+			
+		} catch (error) {
+			console.error('Ошибка загрузки категорий:', error);
+			this.showNotification('Ошибка загрузки категорий: ' + error.message, 'error');
+		}
+	}
+
+	displayCategoriesTable(categories) {
+		const container = document.getElementById('categories-table');
+		if (!container) return;
+		
+		container.innerHTML = '';
+		
+		if (categories.length === 0) {
+			container.innerHTML = '<p class="empty-message">Нет категорий. Добавьте первую категорию.</p>';
+			return;
+		}
+		
+		const table = document.createElement('table');
+		table.className = 'admin-table';
+		table.innerHTML = `
+			<thead>
+				<tr>
+					<th width="50">Иконка</th>
+					<th>Название</th>
+					<th>Описание</th>
+					<th width="80">Цвет</th>
+					<th width="80">Порядок</th>
+					<th width="100">Действия</th>
+				</tr>
+			</thead>
+			<tbody>
+				${categories.map(category => `
+					<tr>
+						<td style="font-size: 20px; text-align: center">${category.icon}</td>
+						<td><strong>${category.name}</strong></td>
+						<td>${category.description || '-'}</td>
+						<td><div style="width: 20px; height: 20px; background: ${category.color}; border-radius: 3px;"></div></td>
+						<td>${category.sort_order}</td>
+						<td class="actions">
+							<button class="edit-btn" onclick="adminPanel.editCategory(${category.id})" title="Редактировать">✏️</button>
+							<button class="delete-btn" onclick="adminPanel.deleteCategory(${category.id})" title="Удалить">🗑️</button>
+						</td>
+					</tr>
+				`).join('')}
+			</tbody>
+		`;
+		
+		container.appendChild(table);
+	}
+
+	// ФОРМА КАТЕГОРИИ
+	showCategoryForm(category = null) {
+		const modal = document.getElementById('category-modal');
+		const title = document.getElementById('category-modal-title');
+		const form = document.getElementById('category-form');
+		
+		if (!modal || !title || !form) return;
+		
+		const isEdit = !!category;
+		title.textContent = isEdit ? '✏️ Редактировать категорию' : '➕ Добавить категорию';
+		
+		// Заполняем поля
+		document.getElementById('category-id').value = category ? category.id : '';
+		document.getElementById('category-name').value = category ? category.name : '';
+		document.getElementById('category-icon').value = category ? category.icon : '📦';
+		document.getElementById('category-color').value = category ? category.color : '#007bff';
+		document.getElementById('category-description').value = category ? category.description || '' : '';
+		document.getElementById('category-order').value = category ? category.sort_order : 100;
+		
+		modal.style.display = 'block';
+		this.currentCategory = category;
+	}
+
+	async saveCategory() {
+		try {
+			const formData = {
+				name: document.getElementById('category-name').value.trim(),
+				icon: document.getElementById('category-icon').value.trim(),
+				color: document.getElementById('category-color').value,
+				description: document.getElementById('category-description').value.trim(),
+				sort_order: parseInt(document.getElementById('category-order').value)
+			};
+			
+			// Валидация
+			if (!formData.name) {
+				this.showNotification('Название категории обязательно', 'error');
+				return;
+			}
+			
+			const categoryId = document.getElementById('category-id').value;
+			let result;
+			
+			if (categoryId) {
+				// Редактирование
+				result = await apiClient.request(`categories/${categoryId}`, 'PUT', formData);
+			} else {
+				// Добавление
+				result = await apiClient.request('categories', 'POST', formData);
+			}
+			
+			if (result.success) {
+				this.showNotification(
+					categoryId ? 'Категория обновлена!' : 'Категория добавлена!', 
+					'success'
+				);
+				
+				document.getElementById('category-modal').style.display = 'none';
+				await this.loadCategoriesData();
+				
+			} else {
+				throw new Error(result.error || 'Ошибка сохранения');
+			}
+			
+		} catch (error) {
+			console.error('Ошибка сохранения категории:', error);
+			this.showNotification('Ошибка: ' + error.message, 'error');
+		}
+	}
+
+	async editCategory(categoryId) {
+		try {
+			const response = await apiClient.request('categories', 'GET');
+			const categories = response.data || [];
+			const category = categories.find(c => c.id === categoryId);
+			
+			if (category) {
+				this.showCategoryForm(category);
+			} else {
+				throw new Error('Категория не найдена');
+			}
+			
+		} catch (error) {
+			console.error('Ошибка загрузки категории:', error);
+			this.showNotification('Ошибка: ' + error.message, 'error');
+		}
+	}
+
+	async deleteCategory(categoryId) {
+		if (!confirm('Удалить эту категорию?')) return;
+		
+		try {
+			const result = await apiClient.request(`categories/${categoryId}`, 'DELETE');
+			
+			if (result.success) {
+				this.showNotification('Категория удалена', 'success');
+				await this.loadCategoriesData();
+			} else {
+				throw new Error(result.error || 'Ошибка удаления');
+			}
+			
+		} catch (error) {
+			console.error('Ошибка удаления категории:', error);
+			this.showNotification('Ошибка: ' + error.message, 'error');
+		}
+	}
 
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     createModal() {

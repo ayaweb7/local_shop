@@ -5,6 +5,11 @@ class ShoppingApp {
         this.categoriesCache = [];
         this.unitsCache = [];
         this.init();
+		this.currentFilters = {
+			category: null,
+			dateFrom: null,
+			dateTo: null
+		};
     }
 
     async init() {
@@ -14,6 +19,8 @@ class ShoppingApp {
             // Загружаем кэши
             await this.loadStoresCache();
             await this.loadCategoriesAndUnitsCache();
+			await this.loadCategoriesCache(); // ← НОВОЕ
+			// await this.loadUnitsCache();
             
             // Инициализируем интерфейс
             this.loadPurchasesData();
@@ -36,32 +43,44 @@ class ShoppingApp {
             this.storesCache = [];
         }
     }
+	
+	// НОВЫЙ МЕТОД - Загрузка кэша категорий
+	async loadCategoriesCache() {
+		try {
+			const categories = await apiClient.getCategories();
+			this.categoriesCache = categories;
+			console.log('Загружено категорий:', categories.length);
+		} catch (error) {
+			console.error('Ошибка загрузки категорий:', error);
+			this.categoriesCache = [];
+		}
+	}
 
     // ЗАГРУЗКА КЭША КАТЕГОРИЙ И ЕДИНИЦ
     async loadCategoriesAndUnitsCache() {
         try {
-            const purchases = await apiClient.getPurchases();
-            
-            // Категории
-            this.categoriesCache = [...new Set(purchases
-                .map(p => p.gruppa)
-                .filter(Boolean)
-            )].sort();
-            
-            // Единицы измерения
-            this.unitsCache = [...new Set(purchases
-                .map(p => p.item)
-                .filter(Boolean)
-            )].sort();
-            
-            console.log('Кэшировано категорий:', this.categoriesCache.length);
-            console.log('Кэшировано единиц:', this.unitsCache.length);
-            
-        } catch (error) {
-            console.error('Ошибка загрузки категорий:', error);
-            this.loadDefaultCategoriesAndUnits();
-        }
-    }
+			// Теперь загружаем категории из API, а не из покупок
+			const [purchases, categories] = await Promise.all([
+				apiClient.getPurchases(),
+				apiClient.getCategories()
+			]);
+			
+			this.categoriesCache = categories;
+			
+			// Единицы измерения по-прежнему из покупок
+			this.unitsCache = [...new Set(purchases
+				.map(p => p.item)
+				.filter(Boolean)
+			)].sort();
+			
+			console.log('Кэшировано категорий:', this.categoriesCache.length);
+			console.log('Кэшировано единиц:', this.unitsCache.length);
+			
+		} catch (error) {
+			console.error('Ошибка загрузки категорий и единиц:', error);
+			this.loadDefaultCategoriesAndUnits();
+		}
+	}
 
     // ЗАГРУЗКА ДАННЫХ И ОТОБРАЖЕНИЕ ТАБЛИЦЫ
     async loadPurchasesData() {
@@ -74,6 +93,8 @@ class ShoppingApp {
             
             document.getElementById('loading').style.display = 'none';
             this.initializeTable(purchases);
+			const stats = this.calculateCategoryStats(purchases);
+			this.displayCategoryStats(stats);
             
         } catch (error) {
             console.error('Ошибка загрузки данных:', error);
@@ -115,12 +136,21 @@ class ShoppingApp {
                         return date ? new Date(date).toLocaleDateString('ru-RU') : '';
                     }
                 },
-				{ 
-                    title: 'Категория', 
-                    field: 'gruppa',
-                    width: 120,
-                    headerFilter: 'input'
-                },
+				// В initializeTable добавьте колонку с иконкой категории:
+				{
+					title: "Категория",
+					field: "category_name",
+					width: 120,
+					headerFilter: "input",
+					formatter: (cell) => {
+						const row = cell.getRow().getData();
+						if (row.category_icon && row.category_name) {
+							return `${row.category_icon} ${row.category_name}`;
+						}
+						return row.gruppa || '-'; // Для старых записей
+					},
+					tooltip: true
+				},
 				{ 
                     title: 'Магазин', 
                     field: 'store.shop',
@@ -227,7 +257,134 @@ class ShoppingApp {
                 window.location.href = 'index.html';
             }
         });
+		
+		// Фильтры
+		document.getElementById('apply-filters').addEventListener('click', () => {
+			this.applyFilters();
+		});
+		
+		document.getElementById('reset-filters').addEventListener('click', () => {
+			this.resetFilters();
+		});
+		
+		// Автофильтрация при изменении категории
+		document.getElementById('category-filter').addEventListener('change', (e) => {
+			this.currentFilters.category = e.target.value || null;
+			this.filterTable();
+		});
+		
+		// Заполняем фильтр категорий
+		this.populateCategoryFilter();
     }
+	
+	
+	// Заполнение фильтра категорий
+	populateCategoryFilter() {
+		const filterSelect = document.getElementById('category-filter');
+		if (!filterSelect) return;
+		
+		filterSelect.innerHTML = '<option value="">Все категории</option>';
+		
+		this.categoriesCache.forEach(category => {
+			const option = document.createElement('option');
+			option.value = category.id;
+			option.textContent = `${category.icon} ${category.name}`;
+			filterSelect.appendChild(option);
+		});
+	}
+
+	// Применение фильтров
+	applyFilters() {
+		const dateFrom = document.getElementById('date-from').value;
+		const dateTo = document.getElementById('date-to').value;
+		
+		this.currentFilters = {
+			category: document.getElementById('category-filter').value || null,
+			dateFrom: dateFrom || null,
+			dateTo: dateTo || null
+		};
+		
+		this.filterTable();
+	}
+
+	// Сброс фильтров
+	resetFilters() {
+		document.getElementById('category-filter').value = '';
+		document.getElementById('date-from').value = '';
+		document.getElementById('date-to').value = '';
+		
+		this.currentFilters = {
+			category: null,
+			dateFrom: null,
+			dateTo: null
+		};
+		
+		this.filterTable();
+	}
+
+	// Фильтрация таблицы
+	filterTable() {
+		if (!this.table) return;
+		
+		const filters = [];
+		
+		// Фильтр по категории
+		if (this.currentFilters.category) {
+			filters.push({
+				field: "category_id",
+				type: "=",
+				value: parseInt(this.currentFilters.category)
+			});
+		}
+		
+		// Фильтр по дате "от"
+		if (this.currentFilters.dateFrom) {
+			filters.push({
+				field: "date",
+				type: ">=",
+				value: this.currentFilters.dateFrom
+			});
+		}
+		
+		// Фильтр по дате "до"
+		if (this.currentFilters.dateTo) {
+			filters.push({
+				field: "date",
+				type: "<=",
+				value: this.currentFilters.dateTo
+			});
+		}
+		
+		// Применяем фильтры к таблице
+		this.table.setFilter(filters);
+		
+		// Показываем активные фильтры
+		this.showActiveFilters();
+	}
+
+	// Показ активных фильтров
+	showActiveFilters() {
+		const activeFilters = [];
+		
+		if (this.currentFilters.category) {
+			const category = this.categoriesCache.find(c => c.id == this.currentFilters.category);
+			if (category) {
+				activeFilters.push(`${category.icon} ${category.name}`);
+			}
+		}
+		
+		if (this.currentFilters.dateFrom || this.currentFilters.dateTo) {
+			const period = [];
+			if (this.currentFilters.dateFrom) period.push(`с ${this.currentFilters.dateFrom}`);
+			if (this.currentFilters.dateTo) period.push(`по ${this.currentFilters.dateTo}`);
+			activeFilters.push(period.join(' '));
+		}
+		
+		if (activeFilters.length > 0) {
+			console.log('Активные фильтры:', activeFilters.join(', '));
+		}
+	}
+	
 
     // ОБНОВЛЕНИЕ ДАННЫХ
     async refreshData() {
@@ -281,32 +438,31 @@ class ShoppingApp {
         });
     }
 
-    loadCategoriesIntoForm() {
-        const select = document.getElementById('purchase-category');
-        if (!select) return;
-        
-        select.innerHTML = '<option value="">Выберите категорию</option>';
-        
-        this.categoriesCache.forEach(category => {
-            const option = document.createElement('option');
-            option.value = category;
-            option.textContent = category;
-            select.appendChild(option);
-        });
-        
-        // Если категорий мало, добавляем стандартные
-        if (this.categoriesCache.length < 5) {
-            const defaultCats = ['Продукты', 'Химия', 'Бытовая техника', 'Одежда'];
-            defaultCats.forEach(cat => {
-                if (!this.categoriesCache.includes(cat)) {
-                    const option = document.createElement('option');
-                    option.value = cat;
-                    option.textContent = cat;
-                    select.appendChild(option);
-                }
-            });
-        }
-    }
+    // Обновите метод loadCategoriesIntoForm:
+	loadCategoriesIntoForm() {
+		const select = document.getElementById('purchase-category');
+		if (!select) return;
+		
+		select.innerHTML = '<option value="">Выберите категорию</option>';
+		
+		this.categoriesCache.forEach(category => {
+			const option = document.createElement('option');
+			option.value = category.id;
+			option.textContent = `${category.icon} ${category.name}`;
+			option.dataset.icon = category.icon;
+			option.dataset.color = category.color;
+			select.appendChild(option);
+		});
+		
+		// Если категорий мало, добавляем сообщение
+		if (this.categoriesCache.length === 0) {
+			const option = document.createElement('option');
+			option.value = '';
+			option.textContent = 'Нет категорий. Добавьте в админ-панели.';
+			option.disabled = true;
+			select.appendChild(option);
+		}
+	}
 
     loadUnitsIntoForm() {
         const select = document.getElementById('purchase-unit');
@@ -392,7 +548,23 @@ class ShoppingApp {
         document.getElementById('purchase-date').value = purchase.date || '';
         document.getElementById('purchase-store').value = purchase.store_id || '';
         document.getElementById('purchase-name').value = purchase.name || '';
-        document.getElementById('purchase-category').value = purchase.gruppa || '';
+		
+        // Категория - устанавливаем значение после загрузки списка
+		setTimeout(() => {
+			const categorySelect = document.getElementById('purchase-category');
+			if (categorySelect && purchaseData.category_id) {
+				categorySelect.value = purchaseData.category_id;
+			} else if (categorySelect && purchaseData.gruppa) {
+				// Для старых записей пытаемся найти категорию по имени
+				const category = this.categoriesCache.find(c => 
+					c.name === purchaseData.gruppa
+				);
+				if (category) {
+					categorySelect.value = category.id;
+				}
+			}
+		}, 100);
+		
         document.getElementById('purchase-price').value = purchase.price || '';
         document.getElementById('purchase-quantity').value = purchase.quantity || '1';
         document.getElementById('purchase-unit').value = purchase.item || 'шт.';
@@ -406,6 +578,7 @@ class ShoppingApp {
         document.getElementById('purchase-date').valueAsDate = new Date();
         document.getElementById('purchase-quantity').value = '1';
         document.getElementById('purchase-unit').value = 'шт.';
+		document.getElementById('purchase-category').value = '';
     }
 
     validateForm() {
@@ -431,7 +604,7 @@ class ShoppingApp {
 
     async savePurchase() {
         if (!this.validateForm()) {
-            this.showNotification('Заполните все обязательные поля', 'error');
+            this.showNotification('Пожалуйста, исправьте ошибки в форме', 'error');
             return;
         }
         
@@ -441,7 +614,7 @@ class ShoppingApp {
 				date: document.getElementById('purchase-date').value,
 				store_id: parseInt(document.getElementById('purchase-store').value),
 				name: document.getElementById('purchase-name').value,
-				gruppa: document.getElementById('purchase-category').value,
+				category_id: parseInt(document.getElementById('purchase-category').value), // ← НОВОЕ
 				price: parseFloat(document.getElementById('purchase-price').value),
 				quantity: parseFloat(document.getElementById('purchase-quantity').value), // ← float
 				item: document.getElementById('purchase-unit').value,
@@ -450,32 +623,28 @@ class ShoppingApp {
 			};
             
             const purchaseId = document.getElementById('purchase-id').value;
-            let result;
+            
             
             if (purchaseId) {
                 // Редактирование
-                result = await apiClient.updatePurchase(purchaseId, formData);
+                const result = await apiClient.updatePurchase(purchaseId, formData);
+				if (result.success) {
+					this.showNotification('Покупка обновлена!', 'success');
+					document.getElementById('purchase-modal').style.display = 'none';
+					await this.refreshData();
+				}
             } else {
                 // Добавление
-                result = await apiClient.addPurchase(formData);
-            }
-            
-            if (result.success) {
-                this.showNotification(
-                    purchaseId ? 'Покупка обновлена!' : 'Покупка добавлена!', 
-                    'success'
-                );
-                
-                // Закрываем форму и обновляем таблицу
-                document.getElementById('purchase-modal').style.display = 'none';
-                await this.refreshData();
-                
-            } else {
-                throw new Error(result.error || 'Ошибка сохранения');
+                const result = await apiClient.addPurchase(formData);
+				if (result.success) {
+					this.showNotification('Покупка добавлена!', 'success');
+					document.getElementById('purchase-modal').style.display = 'none';
+					await this.refreshData();
+				}
             }
             
         } catch (error) {
-            console.error('Ошибка сохранения:', error);
+            console.error('Ошибка сохранения покупки:', error);
             this.showNotification('Ошибка: ' + error.message, 'error');
         }
     }
@@ -498,6 +667,82 @@ class ShoppingApp {
             this.showNotification('Ошибка: ' + error.message, 'error');
         }
     }
+	
+	// Расчет статистики по категориям
+	calculateCategoryStats(purchases) {
+		const stats = {};
+		
+		purchases.forEach(purchase => {
+			// Проверяем разные возможные варианты полей
+			const categoryId = purchase.category_id || purchase.categoryId;
+			
+			if (!categoryId) {
+				console.log('Покупка без категории:', purchase);
+				return; // пропускаем покупки без категории
+			}
+			
+			if (!stats[categoryId]) {
+				// Ищем категорию в кэше
+				const category = this.categoriesCache.find(c => c.id === categoryId);
+				
+				stats[categoryId] = {
+					id: categoryId,
+					name: category ? category.name : 'Неизвестно',
+					icon: category ? category.icon : '❓',
+					color: category ? category.color : '#6c757d',
+					count: 0,
+					amount: 0
+				};
+			}
+			
+			stats[categoryId].count++;
+			stats[categoryId].amount += purchase.amount || 0;
+		});
+		
+		// Преобразуем в массив и сортируем по сумме
+		const statsArray = Object.values(stats)
+			.sort((a, b) => b.amount - a.amount);
+		
+		console.log('Рассчитана статистика по', statsArray.length, 'категориям');
+		return statsArray;
+	}
+
+	// Отображение статистики
+	displayCategoryStats(stats) {
+		const container = document.getElementById('categories-stats');
+		if (!container) return;
+		
+		if (stats.length === 0) {
+			container.innerHTML = '<p>Нет данных для отображения статистики</p>';
+			return;
+		}
+		
+		// Общая сумма
+		const totalAmount = stats.reduce((sum, stat) => sum + stat.amount, 0);
+		
+		let html = `
+			<div class="total-stat">
+				<strong>Общая сумма: ${totalAmount.toFixed(2)} ₽</strong>
+				<span>(${stats.length} категорий)</span>
+			</div>
+		`;
+		
+		stats.forEach(stat => {
+			const percentage = totalAmount > 0 ? (stat.amount / totalAmount * 100).toFixed(1) : 0;
+			
+			html += `
+				<div class="category-stat">
+					<div class="category-icon">${stat.icon}</div>
+					<div class="category-name">${stat.name}</div>
+					<div class="category-amount">${stat.amount.toFixed(2)} ₽</div>
+					<div class="category-count">${stat.count} шт. (${percentage}%)</div>
+				</div>
+			`;
+		});
+		
+		container.innerHTML = html;
+	}
+	
 
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     loadDefaultCategoriesAndUnits() {

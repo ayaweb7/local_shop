@@ -92,6 +92,27 @@ class APIClient {
         const result = await this.request('cities', 'GET');
         return result.data || [];
     }
+	
+	// КАТЕГОРИИ
+	async getCategories() {
+		const result = await this.request('categories', 'GET');
+		return result.data || [];
+	}
+
+	async addCategory(categoryData) {
+		const result = await this.request('categories', 'POST', categoryData);
+		return result;
+	}
+
+	async updateCategory(id, categoryData) {
+		const result = await this.request(`categories/${id}`, 'PUT', categoryData);
+		return result;
+	}
+
+	async deleteCategory(id) {
+		const result = await this.request(`categories/${id}`, 'DELETE');
+		return result;
+	}
 
     // УПРОЩЕННАЯ АВТОРИЗАЦИЯ (заглушка)
     async signIn(email, password) {
