@@ -3,56 +3,54 @@
 <head>
   <title>Мои Покупки</title>
   <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet">
-  <link href="styles.css" rel="stylesheet"> <!-- -->
+  <link href="css/styles.css" rel="stylesheet"> <!-- -->
   <meta charset="UTF-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head>
 <body>
-  <header>
-    <h1>Мои Покупки</h1>
-	<!-- Навигация app.html -->
-	<nav class="app-nav">
-		<button id="add-purchase-btn" class="btn-primary">+ Новая покупка</button>
-		<button id="refresh-btn" class="btn-secondary">🔄 Обновить</button>
-		<button id="admin-btn" class="btn-secondary">⚙️ Админ-панель</button>
-		<button id="logout-btn" class="btn-secondary">Выйти</button>
-	</nav>
+	<header>
+		<h1>Мои Покупки</h1>
+		<!-- Навигация app.html -->
+		<nav class="app-nav">
+			<button id="add-purchase-btn" class="btn-primary">+ Новая покупка</button>
+			<button id="refresh-btn" class="btn-secondary">🔄 Обновить</button>
+			<button onclick="window.location.href='stats.html'" class="btn-secondary">📈 Статистика</button>
+			<button onclick="window.location.href='charts.html'" class="btn-secondary">📊 Графики</button>
+			<button onclick="window.location.href='admin.html'" class="btn-secondary">⚙️ Админ-панель</button>
+			<button id="logout-btn" class="btn-secondary">Выйти</button>
+		</nav>
+		
+		<!-- В app.html после кнопок навигации добавьте: -->
+		<div class="filters-panel">
+			<div class="filter-group">
+				<label>Фильтр по категориям:</label>
+				<select id="category-filter">
+					<option value="">Все категории</option>
+					<!-- Заполнится динамически -->
+				</select>
+			</div>
+			<div class="filter-group">
+				<label>Период с ...</label>
+				<input type="date" id="date-from" placeholder="С">
+			</div>
+			<div class="filter-group">
+				<label>по ...</label>
+				<input type="date" id="date-to" placeholder="По">
+			</div>
+			<button id="apply-filters" class="btn-secondary">Применить</button>
+			<button id="reset-filters" class="btn-secondary">Сбросить</button>
+		</div>
+	</header>
 	
-	<!-- В app.html после кнопок навигации добавьте: -->
-	<div class="filters-panel">
-		<div class="filter-group">
-			<label>Фильтр по категориям:</label>
-			<select id="category-filter">
-				<option value="">Все категории</option>
-				<!-- Заполнится динамически -->
-			</select>
-		</div>
-		<div class="filter-group">
-			<label>Период:</label>
-			<input type="date" id="date-from" placeholder="С">
-			<input type="date" id="date-to" placeholder="По">
-		</div>
-		<button id="apply-filters" class="btn-secondary">Применить</button>
-		<button id="reset-filters" class="btn-secondary">Сбросить</button>
-	</div>
-	
-	<!-- После filters-panel добавьте: -->
-	<div class="stats-panel">
-		<h3>📊 Статистика по категориям</h3>
-		<div id="categories-stats">
-			<p>Загружается статистика...</p>
-		</div>
-	</div>
-    
-  </header>
-  <main>
-    <div id="purchases-table"></div>
-    <div id="loading">Загрузка данных...</div>
-  </main>
+	<main>
+		<div id="purchases-table"></div>
+		<div id="loading">Загрузка данных...</div>
+	</main>
   
   <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
-  <script src="api.js"></script>
-  <script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
   
   <!-- Форма для добавления / редактирования покупок -->
 <div id="purchase-modal" class="modal">

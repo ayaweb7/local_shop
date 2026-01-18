@@ -113,6 +113,12 @@ class APIClient {
 		const result = await this.request(`categories/${id}`, 'DELETE');
 		return result;
 	}
+	
+	// Агрегация категорий
+	async getCategoryStats() {
+		const result = await this.request('stats-categories', 'GET');
+		return result.data || [];
+	}
 
     // УПРОЩЕННАЯ АВТОРИЗАЦИЯ (заглушка)
     async signIn(email, password) {

@@ -618,7 +618,8 @@ body {
     font-style: italic;
 }
 
-/* Формы админки */
+/***** ФОРМЫ АДМИНКИ *****/
+
 .admin-form {
     max-width: 500px;
     margin: 0 auto;
@@ -678,7 +679,8 @@ body {
     color: #333;
 }
 
-/* Панель фильтров */
+/***** ПАНЕЛЬ ФИЛЬТРОВ *****/
+
 .filters-panel {
     background: #f8f9fa;
     padding: 15px;
@@ -714,7 +716,8 @@ body {
     width: 120px;
 }
 
-/* Панель статистики */
+/***** ПАНЕЛЬ СТАТИСТИКИ *****/
+
 .stats-panel {
     background: white;
     padding: 15px;
@@ -760,4 +763,218 @@ body {
     color: #6c757d;
     font-size: 12px;
     margin-left: 10px;
+}
+
+/* Заголовок статистики */
+.stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.stats-header h3 {
+    margin: 0;
+}
+
+#toggle-stats {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.stats-panel.collapsed {
+    display: none;
+}
+
+/* ============================================
+   СТИЛИ ДЛЯ ДАШБОРДА И ГРАФИКОВ
+   ============================================ */
+
+/* Контейнер дашборда */
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Контейнер для каждого графика */
+.chart-container {
+    position: relative;
+    background: white;
+    padding: 20px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-container h3 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 18px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 8px;
+}
+
+/* Сам canvas графика */
+.chart-container canvas {
+    flex: 1;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Контролы для графиков */
+.chart-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #e9ecef;
+    border-radius: 4px;
+    flex-wrap: wrap;
+}
+
+.chart-controls select,
+.chart-controls input {
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.chart-controls label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    color: #495057;
+}
+
+/* Легенда графика */
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    font-size: 12px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.legend-item:hover {
+    background: #e9ecef;
+    transform: translateY(-1px);
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+.legend-text {
+    white-space: nowrap;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+        padding: 10px;
+        gap: 15px;
+    }
+    
+    .chart-container {
+        min-height: 300px;
+        padding: 15px;
+    }
+    
+    .chart-controls {
+        flex-direction: column;
+    }
+}
+
+/* Заглушка для пустого графика */
+.chart-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #6c757d;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+}
+
+/* Индикатор загрузки */
+.chart-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #007bff;
+    font-size: 14px;
+}
+
+/* Селектор типа графика */
+.chart-type-selector {
+    grid-column: 1 / -1;
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.chart-types {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.chart-type-btn {
+    padding: 10px 15px;
+    border: 2px solid #e9ecef;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.chart-type-btn:hover {
+    border-color: #007bff;
+    transform: translateY(-2px);
+}
+
+.chart-type-btn.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+/* Пара графиков */
+.charts-pair {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
 }

@@ -1,0 +1,95 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Графики - Трекер покупок</title>
+    <link href="css/styles.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/charts.js"></script>
+</head>
+<body>
+    <header>
+        <h1>📊 Графики покупок</h1>
+        <nav class="app-nav">
+            <button onclick="window.location.href='app.html'" class="btn-secondary">← К таблице</button>
+            <button onclick="window.location.href='stats.html'" class="btn-secondary">📈 Статистика</button>
+            <button onclick="window.location.href='admin.html'" class="btn-secondary">⚙️ Админ-панель</button>
+        </nav>
+    </header>
+    
+    <!-- Фильтры для графиков -->
+    <div class="filters-panel">
+        <div class="filter-group">
+            <label>Период:</label>
+            <select id="period-filter">
+                <option value="all">Все данные</option>
+                <option value="year">Год</option>
+                <option value="month">Месяц</option>
+            </select>
+        </div>
+        
+        <div class="filter-group" id="year-filter-group" style="display:none;">
+            <label>Год:</label>
+            <select id="year-filter">
+                <!-- Заполнится динамически -->
+            </select>
+        </div>
+        
+        <div class="filter-group" id="month-filter-group" style="display:none;">
+            <label>Месяц:</label>
+            <select id="month-filter">
+                <option value="1">Январь</option>
+                <option value="2">Февраль</option>
+                <option value="3">Март</option>
+                <option value="4">Апрель</option>
+                <option value="5">Май</option>
+                <option value="6">Июнь</option>
+                <option value="7">Июль</option>
+                <option value="8">Август</option>
+                <option value="9">Сентябрь</option>
+                <option value="10">Октябрь</option>
+                <option value="11">Ноябрь</option>
+                <option value="12">Декабрь</option>
+            </select>
+        </div>
+        
+        <button id="apply-filters" class="btn-primary">Применить</button>
+        <button id="reset-filters" class="btn-secondary">Сбросить</button>
+    </div>
+    
+    <!-- Дашборд графиков -->
+    <!-- Замените весь dashboard на: -->
+	<div class="dashboard">
+		<!-- Селектор типа графика -->
+		<div class="chart-type-selector">
+			<h3>Выберите тип анализа:</h3>
+			<div class="chart-types">
+				<button class="chart-type-btn active" data-type="categories">📊 По категориям</button>
+				<button class="chart-type-btn" data-type="months">📅 По месяцам</button>
+				<button class="chart-type-btn" data-type="years">📈 По годам</button>
+				<button class="chart-type-btn" data-type="stores">🏪 По магазинам</button>
+				<button class="chart-type-btn" data-type="products">🛒 По товарам</button>
+			</div>
+		</div>
+		
+		<!-- Два графика -->
+		<div class="charts-pair">
+			<div class="chart-container">
+				<h3 id="left-chart-title">Распределение расходов</h3>
+				<canvas id="left-chart"></canvas>
+			</div>
+			
+			<div class="chart-container">
+				<h3 id="right-chart-title">Количество покупок</h3>
+				<canvas id="right-chart"></canvas>
+			</div>
+		</div>
+	</div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            window.chartsApp = new ChartsApp();
+        });
+    </script>
+</body>
+</html>

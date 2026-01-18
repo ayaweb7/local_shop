@@ -32,6 +32,9 @@ switch ($endpoint[0]) {
 	case 'categories':
         handleCategories($method, $endpoint, $db);
         break;
+	case 'stats-categories':
+		handleStatsCategories($method, $db);
+		break;
     default:
         http_response_code(404);
         echo json_encode(['error' => 'Endpoint not found'], JSON_UNESCAPED_UNICODE);
@@ -789,6 +792,66 @@ function handleCategories($method, $endpoint, $db) {
             echo json_encode(['error' => 'Method not allowed'], JSON_UNESCAPED_UNICODE);
             break;
     }
+}
+
+// ФУНКЦИЯ ДЛЯ АГРЕГАЦИИ КАТЕГОРИЙ
+// В api.php добавьте функцию с поддержкой фильтров:
+function handleStatsCategories($method, $db) {
+    if ($method !== 'GET') {
+        http_response_code(405);
+        echo json_encode(['error' => 'Method not allowed'], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+    
+    // Получаем параметры фильтрации
+    $year = $_GET['year'] ?? null;
+    $month = $_GET['month'] ?? null;
+    
+    // Базовый запрос
+    $sql = "SELECT 
+                c.id,
+                c.name,
+                c.icon,
+                c.color,
+                COUNT(s.id) as purchase_count,
+                SUM(s.amount) as total_amount
+            FROM categories c
+            LEFT JOIN shops s ON c.id = s.category_id";
+    
+    // Условия фильтрации
+    $conditions = ["c.is_active = TRUE"];
+    
+    if ($year) {
+        $conditions[] = "YEAR(s.date) = " . intval($year);
+    }
+    
+    if ($month) {
+        $conditions[] = "MONTH(s.date) = " . intval($month);
+    }
+    
+    if (count($conditions) > 1) {
+        $sql .= " WHERE " . implode(" AND ", $conditions);
+    } else {
+        $sql .= " WHERE " . $conditions[0];
+    }
+    
+    $sql .= " GROUP BY c.id ORDER BY total_amount DESC";
+    
+    $result = $db->query($sql);
+    $stats = [];
+    
+    while ($row = $result->fetch_assoc()) {
+        $stats[] = [
+            'id' => (int)$row['id'],
+            'name' => $row['name'],
+            'icon' => $row['icon'],
+            'color' => $row['color'],
+            'count' => (int)$row['purchase_count'],
+            'amount' => (float)$row['total_amount'] ?: 0
+        ];
+    }
+    
+    echo json_encode(['data' => $stats], JSON_UNESCAPED_UNICODE);
 }
 
 // ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ ФОРМАТИРОВАНИЯ АДРЕСА

@@ -4,6 +4,7 @@ class ShoppingApp {
         this.storesCache = [];
         this.categoriesCache = [];
         this.unitsCache = [];
+		// this.chartManager = new ChartManager();
         this.init();
 		this.currentFilters = {
 			category: null,
@@ -20,12 +21,17 @@ class ShoppingApp {
             await this.loadStoresCache();
             await this.loadCategoriesAndUnitsCache();
 			await this.loadCategoriesCache(); // ← НОВОЕ
-			// await this.loadUnitsCache();
+			await this.loadUnitsCache();
             
             // Инициализируем интерфейс
             this.loadPurchasesData();
             this.setupEventListeners();
             this.initializePurchaseForm();
+			
+			// Инициализируем графики после загрузки данных
+            setTimeout(() => {
+                this.chartManager.initCharts();
+            }, 1000);
             
         } catch (error) {
             console.error('Ошибка инициализации:', error);
@@ -57,7 +63,7 @@ class ShoppingApp {
 	}
 
     // ЗАГРУЗКА КЭША КАТЕГОРИЙ И ЕДИНИЦ
-    async loadCategoriesAndUnitsCache() {
+    async loadUnitsCache() {
         try {
 			// Теперь загружаем категории из API, а не из покупок
 			const [purchases, categories] = await Promise.all([
@@ -93,8 +99,8 @@ class ShoppingApp {
             
             document.getElementById('loading').style.display = 'none';
             this.initializeTable(purchases);
-			const stats = this.calculateCategoryStats(purchases);
-			this.displayCategoryStats(stats);
+			// const stats = this.calculateCategoryStats(purchases);
+			// this.displayCategoryStats(stats);
             
         } catch (error) {
             console.error('Ошибка загрузки данных:', error);
@@ -275,6 +281,11 @@ class ShoppingApp {
 		
 		// Заполняем фильтр категорий
 		this.populateCategoryFilter();
+		
+		// Кнопка скрыть/показать статистику
+		document.getElementById('toggle-stats').addEventListener('click', () => {
+			this.toggleStats();
+		});
     }
 	
 	
@@ -433,7 +444,7 @@ class ShoppingApp {
         this.storesCache.forEach(store => {
             const option = document.createElement('option');
             option.value = store.id;
-            option.textContent = `${store.shop} (${store.address})`;
+            option.textContent = `${store.shop} (${store.street}, ${store.house})`;
             select.appendChild(option);
         });
     }
@@ -479,6 +490,33 @@ class ShoppingApp {
             }
         });
     }
+	
+	// Обновите loadCategoriesAndUnitsCache:
+	async loadCategoriesAndUnitsCache() {
+		try {
+			// Теперь загружаем категории из API, а не из покупок
+			const [purchases, categories] = await Promise.all([
+				apiClient.getPurchases(),
+				apiClient.getCategories()
+			]);
+			
+			this.categoriesCache = categories;
+			
+			// Единицы измерения по-прежнему из покупок
+			this.unitsCache = [...new Set(purchases
+				.map(p => p.item)
+				.filter(Boolean)
+			)].sort();
+			
+			console.log('Кэшировано категорий:', this.categoriesCache.length);
+			console.log('Кэшировано единиц:', this.unitsCache.length);
+			
+		} catch (error) {
+			console.error('Ошибка загрузки категорий и единиц:', error);
+			this.loadDefaultCategoriesAndUnits();
+		}
+	}
+
 
     setupFormEventListeners() {
         const form = document.getElementById('purchase-form');
@@ -668,82 +706,7 @@ class ShoppingApp {
         }
     }
 	
-	// Расчет статистики по категориям
-	calculateCategoryStats(purchases) {
-		const stats = {};
-		
-		purchases.forEach(purchase => {
-			// Проверяем разные возможные варианты полей
-			const categoryId = purchase.category_id || purchase.categoryId;
-			
-			if (!categoryId) {
-				console.log('Покупка без категории:', purchase);
-				return; // пропускаем покупки без категории
-			}
-			
-			if (!stats[categoryId]) {
-				// Ищем категорию в кэше
-				const category = this.categoriesCache.find(c => c.id === categoryId);
-				
-				stats[categoryId] = {
-					id: categoryId,
-					name: category ? category.name : 'Неизвестно',
-					icon: category ? category.icon : '❓',
-					color: category ? category.color : '#6c757d',
-					count: 0,
-					amount: 0
-				};
-			}
-			
-			stats[categoryId].count++;
-			stats[categoryId].amount += purchase.amount || 0;
-		});
-		
-		// Преобразуем в массив и сортируем по сумме
-		const statsArray = Object.values(stats)
-			.sort((a, b) => b.amount - a.amount);
-		
-		console.log('Рассчитана статистика по', statsArray.length, 'категориям');
-		return statsArray;
-	}
-
-	// Отображение статистики
-	displayCategoryStats(stats) {
-		const container = document.getElementById('categories-stats');
-		if (!container) return;
-		
-		if (stats.length === 0) {
-			container.innerHTML = '<p>Нет данных для отображения статистики</p>';
-			return;
-		}
-		
-		// Общая сумма
-		const totalAmount = stats.reduce((sum, stat) => sum + stat.amount, 0);
-		
-		let html = `
-			<div class="total-stat">
-				<strong>Общая сумма: ${totalAmount.toFixed(2)} ₽</strong>
-				<span>(${stats.length} категорий)</span>
-			</div>
-		`;
-		
-		stats.forEach(stat => {
-			const percentage = totalAmount > 0 ? (stat.amount / totalAmount * 100).toFixed(1) : 0;
-			
-			html += `
-				<div class="category-stat">
-					<div class="category-icon">${stat.icon}</div>
-					<div class="category-name">${stat.name}</div>
-					<div class="category-amount">${stat.amount.toFixed(2)} ₽</div>
-					<div class="category-count">${stat.count} шт. (${percentage}%)</div>
-				</div>
-			`;
-		});
-		
-		container.innerHTML = html;
-	}
 	
-
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     loadDefaultCategoriesAndUnits() {
         this.categoriesCache = [
@@ -760,6 +723,8 @@ class ShoppingApp {
         alert(`[${type.toUpperCase()}] ${message}`);
     }
 }
+
+
 
 // ЗАПУСК ПРИЛОЖЕНИЯ
 document.addEventListener('DOMContentLoaded', () => {
