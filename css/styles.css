@@ -101,6 +101,94 @@ body {
     padding: 8px 12px;
 }
 
+
+/* Информационная панель таблицы */
+
+.table-info-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 12px 20px;
+    margin: 15px 0;
+    font-size: 14px;
+}
+
+.info-left {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#table-status {
+    font-weight: 600;
+    color: #495057;
+}
+
+.active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.filter-badge {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 3px 8px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.filter-badge .remove-filter {
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    margin-left: 4px;
+    opacity: 0.7;
+}
+
+.filter-badge .remove-filter:hover {
+    opacity: 1;
+}
+
+.info-right {
+    display: flex;
+    gap: 20px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 120px;
+}
+
+.info-label {
+    color: #6c757d;
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+
+.info-value {
+    font-weight: 600;
+    color: #495057;
+    font-size: 16px;
+}
+
+#total-amount {
+    color: #dc3545;
+}
+
+#avg-amount {
+    color: #28a745;
+}
+
+
 /* === АДМИН-ПАНЕЛЬ === */
 .tab-navigation {
     display: flex;
@@ -716,7 +804,17 @@ body {
     width: 120px;
 }
 
-/***** ПАНЕЛЬ СТАТИСТИКИ *****/
+/* ============================================
+		ПАНЕЛЬ СТАТИСТИКИ  
+   ============================================ */
+
+.stats-container {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
 
 .stats-panel {
     background: white;
@@ -765,17 +863,29 @@ body {
     margin-left: 10px;
 }
 
+.stats-summary {
+    display: flex;
+    gap: 15px;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
 /* Заголовок статистики */
 .stats-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e9ecef;
 }
 
 .stats-header h3 {
     margin: 0;
+    color: #333;
+    font-size: 1.2rem;
 }
+
 
 #toggle-stats {
     padding: 5px 10px;
@@ -784,6 +894,140 @@ body {
 
 .stats-panel.collapsed {
     display: none;
+}
+
+.stats-table {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.stats-row {
+    display: table-row;
+}
+
+.stats-row.header {
+    background: #f8f9fa;
+    font-weight: bold;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.stats-row.even {
+    background: #f8f9fa;
+}
+
+.stats-row.odd {
+    background: white;
+}
+
+.stats-row:hover {
+    background: #e9ecef;
+}
+
+.stats-cell {
+    display: table-cell;
+    padding: 12px 8px;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.stats-cell.icon {
+    width: 50px;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.stats-cell.name {
+    width: 200px;
+}
+
+.stats-cell.amount,
+.stats-cell.count,
+.stats-cell.percent {
+    width: 100px;
+    text-align: right;
+}
+
+.stats-cell.percent {
+    position: relative;
+    min-width: 120px;
+}
+
+.percent-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background-color: var(--category-color, #007bff);
+    opacity: 0.2;
+    z-index: 1;
+}
+
+.percent-text {
+    position: relative;
+    z-index: 2;
+}
+
+/* Сводная статистика */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.summary-card {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.summary-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.summary-title {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.summary-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.stats-period {
+    color: #6c757d;
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Кнопки экспорта */
+.stats-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
 }
 
 /* ============================================

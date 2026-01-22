@@ -1,21 +1,181 @@
 ﻿<!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Статистика - Трекер покупок</title>
-    <link href="css/styles.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статистика покупок - Shopping Tracker</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .page-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .stats-section {
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>📈 Статистика покупок</h1>
-        <nav class="app-nav">
-            <button onclick="window.location.href='app.html'" class="btn-secondary">← К таблице</button>
-            <button onclick="window.location.href='charts.html'" class="btn-secondary">📊 Графики</button>
-            <button onclick="window.location.href='admin.html'" class="btn-secondary">⚙️ Админ-панель</button>
-        </nav>
-    </header>
-    
-    <div class="container">
-        <p>Раздел статистики в разработке. Скоро здесь появятся детальные отчёты.</p>
+    <div class="main-container">
+        <!-- Шапка страницы -->
+        <header class="page-header">
+            <h1>📊 Статистика покупок</h1>
+            <div class="page-actions">
+                <button onclick="window.location.href='app.html'" class="btn-secondary">
+                    ← Назад к таблице
+                </button>
+                <button onclick="window.location.href='charts.html'" class="btn-primary">
+                    📈 Графики
+                </button>
+                <button onclick="refreshStats()" class="btn-secondary">
+                    🔄 Обновить
+                </button>
+            </div>
+        </header>
+        
+        <!-- Сводная статистика -->
+        <section class="stats-section">
+            <h2 class="section-title">📋 Обзор</h2>
+            <div id="summary-stats" class="stats-container">
+                <!-- Заполнится динамически -->
+            </div>
+        </section>
+        
+        <!-- Статистика по категориям -->
+        <section class="stats-section">
+            <div class="section-title">
+                🏷️ По категориям
+                <button onclick="exportStats('categories')" class="btn-small">
+                    📥 Экспорт CSV
+                </button>
+            </div>
+            <div id="categories-stats" class="stats-container">
+                <!-- Заполнится динамически -->
+            </div>
+        </section>
+        
+        <!-- Статистика по магазинам -->
+        <section class="stats-section">
+            <div class="section-title">
+                🏪 По магазинам
+                <button onclick="exportStats('stores')" class="btn-small">
+                    📥 Экспорт CSV
+                </button>
+            </div>
+            <div id="stores-stats" class="stats-container">
+                <!-- Заполнится динамически -->
+            </div>
+        </section>
+        
+        <!-- Месячная статистика -->
+        <section class="stats-section">
+            <div class="section-title">
+                📅 По месяцам
+                <button onclick="exportStats('monthly')" class="btn-small">
+                    📥 Экспорт CSV
+                </button>
+            </div>
+            <div id="monthly-stats" class="stats-container">
+                <!-- Заполнится динамически -->
+            </div>
+        </section>
+        
+        <!-- Дополнительные действия -->
+        <div class="stats-actions">
+            <button onclick="printStats()" class="btn-secondary">
+                🖨️ Печать отчета
+            </button>
+            <button onclick="exportAllStats()" class="btn-primary">
+                📁 Экспорт всех данных
+            </button>
+        </div>
     </div>
+    
+    <!-- Подключение скриптов -->
+    <script src="js/api.js"></script>
+    <script src="js/stats.js"></script>
+    <script>
+        let statsData = [];
+        
+        async function loadStats() {
+            console.log('Загрузка статистики...');
+            
+            try {
+                // Загружаем данные
+                const purchases = await apiClient.getPurchases();
+                const categories = await apiClient.getCategories();
+                const stores = await apiClient.getStores();
+                
+                console.log('Данные загружены:', {
+                    purchases: purchases.length,
+                    categories: categories.length,
+                    stores: stores.length
+                });
+                
+                // Инициализируем менеджер статистики
+                if (window.statisticsManager) {
+                    window.statisticsManager.init(categories, stores);
+                    window.statisticsManager.calculateAll(purchases);
+                    window.statisticsManager.displayAll();
+                } else {
+                    console.error('statisticsManager не найден');
+                }
+                
+            } catch (error) {
+                console.error('Ошибка загрузки статистики:', error);
+                alert('Ошибка загрузки статистики: ' + error.message);
+            }
+        }
+        
+        function refreshStats() {
+            console.log('Обновление статистики...');
+            loadStats();
+        }
+        
+        function exportStats(type) {
+            if (window.statisticsManager) {
+                window.statisticsManager.exportToCSV(type);
+            }
+        }
+        
+        function exportAllStats() {
+            const types = ['categories', 'stores', 'monthly'];
+            types.forEach(type => {
+                setTimeout(() => exportStats(type), 300);
+            });
+        }
+        
+        function printStats() {
+            window.print();
+        }
+        
+        // Загружаем статистику при загрузке страницы
+        document.addEventListener('DOMContentLoaded', loadStats);
+    </script>
 </body>
 </html>

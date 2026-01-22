@@ -20,29 +20,75 @@
 			<button id="logout-btn" class="btn-secondary">Выйти</button>
 		</nav>
 		
-		<!-- В app.html после кнопок навигации добавьте: -->
+		<!-- Основные фильтры: -->
 		<div class="filters-panel">
+			<!-- Категории -->
 			<div class="filter-group">
 				<label>Фильтр по категориям:</label>
 				<select id="category-filter">
 					<option value="">Все категории</option>
-					<!-- Заполнится динамически -->
 				</select>
 			</div>
+			<!-- Даты: -->
 			<div class="filter-group">
+				<!-- Период "с ..." -->
 				<label>Период с ...</label>
 				<input type="date" id="date-from" placeholder="С">
 			</div>
 			<div class="filter-group">
-				<label>по ...</label>
+				<!-- Период "... по" -->
+				<label>Период по ...</label>
 				<input type="date" id="date-to" placeholder="По">
+			</div>
+			<!-- Магазины -->
+			<div class="filter-group">
+				<label>Фильтр по магазинам:</label>
+				<select id="store-filter">
+					<option value="">Все магазины</option>
+				</select>
 			</div>
 			<button id="apply-filters" class="btn-secondary">Применить</button>
 			<button id="reset-filters" class="btn-secondary">Сбросить</button>
 		</div>
+		
+		<!-- После панели фильтров -->
+		<div id="active-filters-info" style="
+			display: none;
+			background: #e3f2fd;
+			padding: 8px 12px;
+			margin: 10px 0;
+			border-radius: 4px;
+			border-left: 4px solid #2196f3;
+			font-size: 14px;
+		">
+			<!-- Будет заполняться динамически -->
+		</div>
 	</header>
 	
 	<main>
+		<!-- После блока фильтров, перед таблицей -->
+		<div class="table-info-panel" id="table-info-panel">
+			<div class="info-left">
+				<span id="table-status">Все данные</span>
+				<div id="active-filters-info" class="active-filters"></div>
+			</div>
+			<div class="info-right">
+				<div class="info-item">
+					<span class="info-label">Покупок:</span>
+					<span class="info-value" id="total-rows">0</span>
+				</div>
+				<div class="info-item">
+					<span class="info-label">Расход:</span>
+					<span class="info-value" id="total-amount">0.00 ₽</span>
+				</div>
+				<div class="info-item">
+					<span class="info-label">Средний чек:</span>
+					<span class="info-value" id="avg-amount">0.00 ₽</span>
+				</div>
+			</div>
+		</div>
+		
+		<!-- Основная таблица покупок - заполняется динамически -->
 		<div id="purchases-table"></div>
 		<div id="loading">Загрузка данных...</div>
 	</main>
@@ -50,7 +96,9 @@
   <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/filters_test.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/stats.js"></script>
   
   <!-- Форма для добавления / редактирования покупок -->
 <div id="purchase-modal" class="modal">

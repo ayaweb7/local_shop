@@ -1,0 +1,54 @@
+﻿<!-- test-filters.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Тест фильтров</title>
+</head>
+<body>
+    <h1>Тест фильтров</h1>
+    
+    <div class="filters-panel">
+        <select id="category-filter">
+            <option value="">Все категории</option>
+        </select>
+        <select id="store-filter">
+            <option value="">Все магазины</option>
+        </select>
+        <input type="date" id="date-from">
+        <input type="date" id="date-to">
+        <button id="apply-filters">Применить</button>
+        <button id="reset-filters">Сбросить</button>
+    </div>
+    
+    <script src="js/filters.js"></script>
+    <script>
+        // Тестовые данные
+        const testCategories = [
+            { id: 1, name: "Продукты", icon: "🍎" },
+            { id: 2, name: "Электроника", icon: "📱" }
+        ];
+        
+        const testStores = [
+            { id: 1, shop: "Пятерочка", street: "ул. Ленина", house: "10" },
+            { id: 2, shop: "М.Видео", street: "пр. Мира", house: "25" }
+        ];
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM загружен');
+            
+            filterManager.init((filters) => {
+                console.log('Фильтры изменены:', filters);
+            });
+            
+            // Заполняем фильтры
+            setTimeout(() => {
+                filterManager.populateCategoryFilter(testCategories);
+                filterManager.populateStoreFilter(testStores);
+                console.log('Фильтры заполнены');
+            }, 100);
+        });
+    </script>
+</body>
+</html>
+
