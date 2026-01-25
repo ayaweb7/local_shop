@@ -743,11 +743,31 @@ class BaseChart {
      * Подготовка данных (должен быть переопределен в дочерних классах)
      */
     prepareData(rawData) {
-        return {
-            labels: [],
-            datasets: []
-        };
-    }
+		// ВАЖНО: rawData может быть уже подготовленными данными для Chart.js
+		// или сырыми данными, которые нужно обработать
+		
+		if (!rawData) {
+			return {
+				labels: [],
+				datasets: []
+			};
+		}
+		
+		// Если rawData уже в формате Chart.js (имеет labels и datasets)
+		if (rawData.labels && rawData.datasets) {
+			return rawData;
+		}
+		
+		// Если это сырые данные, обрабатываем их
+		// (этот код должен быть реализован в дочерних классах)
+		console.warn('BaseChart.prepareData: rawData не в формате Chart.js, но нет обработки');
+		console.log('rawData type:', typeof rawData, 'keys:', Object.keys(rawData));
+		
+		return {
+			labels: [],
+			datasets: []
+		};
+	}
     
     /**
      * Обновление данных графика
@@ -1821,6 +1841,31 @@ class BarChart extends BaseChart {
             }
         };
     }
+	
+	prepareData(rawData) {
+        // Если данные уже в формате Chart.js, возвращаем как есть
+        if (rawData && rawData.labels && rawData.datasets) {
+            return rawData;
+        }
+        
+        // Если это сырые данные из DataProcessor
+        if (rawData && rawData.labels && rawData.amounts) {
+            return {
+                labels: rawData.labels,
+                datasets: [{
+                    label: rawData.datasetLabel || 'Данные',
+                    data: rawData.amounts,
+                    backgroundColor: rawData.colors || this.theme.palette,
+                    borderColor: rawData.colors || this.theme.palette.map(color => this.darkenColor(color, 0.2)),
+                    borderWidth: 1,
+                    borderRadius: 3
+                }]
+            };
+        }
+        
+        // Если ничего не подошло, вызываем родительский метод
+        return super.prepareData(rawData);
+    }
 }
 
 class PieChart extends BaseChart {
@@ -1852,6 +1897,31 @@ class PieChart extends BaseChart {
                 }
             }
         };
+    }
+	
+	prepareData(rawData) {
+        // Если данные уже в формате Chart.js, возвращаем как есть
+        if (rawData && rawData.labels && rawData.datasets) {
+            return rawData;
+        }
+        
+        // Если это сырые данные из DataProcessor
+        if (rawData && rawData.labels && rawData.amounts) {
+            return {
+                labels: rawData.labels,
+                datasets: [{
+                    label: rawData.datasetLabel || 'Данные',
+                    data: rawData.amounts,
+                    backgroundColor: rawData.colors || this.theme.palette,
+                    borderColor: rawData.colors || this.theme.palette.map(color => this.darkenColor(color, 0.2)),
+                    borderWidth: 1,
+                    borderRadius: 3
+                }]
+            };
+        }
+        
+        // Если ничего не подошло, вызываем родительский метод
+        return super.prepareData(rawData);
     }
 }
 
@@ -1922,6 +1992,31 @@ class LineChart extends BaseChart {
                 }
             }
         };
+    }
+	
+	prepareData(rawData) {
+        // Если данные уже в формате Chart.js, возвращаем как есть
+        if (rawData && rawData.labels && rawData.datasets) {
+            return rawData;
+        }
+        
+        // Если это сырые данные из DataProcessor
+        if (rawData && rawData.labels && rawData.amounts) {
+            return {
+                labels: rawData.labels,
+                datasets: [{
+                    label: rawData.datasetLabel || 'Данные',
+                    data: rawData.amounts,
+                    backgroundColor: rawData.colors || this.theme.palette,
+                    borderColor: rawData.colors || this.theme.palette.map(color => this.darkenColor(color, 0.2)),
+                    borderWidth: 1,
+                    borderRadius: 3
+                }]
+            };
+        }
+        
+        // Если ничего не подошло, вызываем родительский метод
+        return super.prepareData(rawData);
     }
 }
 
@@ -2974,11 +3069,17 @@ class DataProcessor {
         // Сортируем по сумме
         const sorted = Object.values(categoryStats).sort((a, b) => b.amount - a.amount);
         
-        return {
-            labels: sorted.map(item => item.name),
-            amounts: sorted.map(item => item.amount),
-            colors: sorted.map(item => item.color)
-        };
+        // ВОТ ИСПРАВЛЕНИЕ: возвращаем в формате Chart.js
+		return {
+			labels: sorted.map(item => item.name),
+			datasets: [{
+				label: 'Сумма покупок',
+				data: sorted.map(item => item.amount),
+				backgroundColor: sorted.map(item => item.color),
+				borderColor: sorted.map(item => this.darkenColor(item.color, 0.2)),
+				borderWidth: 1
+			}]
+		};
     }
     
     /**

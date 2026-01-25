@@ -18,7 +18,7 @@
     
     <div>
         <button onclick="testDirectChartJS()">Тест Chart.js напрямую</button>
-        <button onclick="testOurChartManager()">Тест нашего ChartManager</button>
+        <button onclick="testFixedChart()">Тест нашего ChartManager</button>
         <button onclick="testDataProcessor()">Тест обработки данных</button>
         <button onclick="clearAll()">Очистить все</button>
     </div>
@@ -83,50 +83,57 @@
         }, 100);
     }
     
-    async function testOurChartManager() {
-        log('=== Тест нашего ChartManager ===');
-        
-        if (!window.chartManager) {
-            log('ERROR: chartManager не найден');
-            return;
-        }
-        
-        log('chartManager: ' + (window.chartManager ? 'FOUND' : 'NOT FOUND'));
-        
-        // Тест 1: Простые данные
-        const canvasId = 'our-test-' + Date.now();
-        const container = document.getElementById('charts');
-        
-        container.innerHTML += `
-            <div class="chart-container">
-                <h3>Our ChartManager Test</h3>
-                <canvas id="${canvasId}"></canvas>
-            </div>
-        `;
-        
-        setTimeout(() => {
-            const simpleData = {
-                labels: ['Test 1', 'Test 2', 'Test 3'],
-                datasets: [{
-                    label: 'Simple Test',
-                    data: [3, 4, 1],
-                    backgroundColor: ['#FF6B6B', '#4ECDC4', '#FFD166']
-                }]
-            };
-            
-            try {
-                const chart = chartManager.createChart(canvasId, 'bar', simpleData);
-                log('✓ Простой график создан: ' + (chart ? 'SUCCESS' : 'FAILED'));
-                
-                if (chart) {
-                    log('Chart config: ' + JSON.stringify(chart.config?.type));
-                }
-            } catch (error) {
-                log('ERROR creating simple chart: ' + error.message);
-            }
-            
-        }, 100);
-    }
+    async function testFixedChart() {
+		try {
+			console.log('=== ТЕСТ ИСПРАВЛЕННОГО ГРАФИКА ===');
+			
+			// Создаем canvas
+			const canvasId = 'fixed-test-' + Date.now();
+			const container = document.getElementById('chartsContainer') || document.body;
+			container.innerHTML += `
+				<div style="margin: 20px; padding: 20px; border: 2px solid green;">
+					<h3>Fixed Chart Test</h3>
+					<canvas id="${canvasId}" width="600" height="400"></canvas>
+				</div>
+			`;
+			
+			// Получаем данные
+			const purchases = await apiClient.getPurchases();
+			const categories = await apiClient.getCategories();
+			
+			console.log('Данные загружены');
+			
+			// Пробуем напрямую с простыми данными
+			const simpleData = {
+				labels: ['Тест A', 'Тест B', 'Тест C'],
+				datasets: [{
+					label: 'Тест',
+					data: [100, 200, 300],
+					backgroundColor: ['#FF0000', '#00FF00', '#0000FF']
+				}]
+			};
+			
+			// Создаем график
+			const chart = chartManager.createChart(canvasId, 'bar', simpleData);
+			
+			if (chart) {
+				console.log('✓ График создан успешно!');
+				console.log('Chart data:', chart.data);
+				
+				// Проверяем через 1 секунду
+				setTimeout(() => {
+					console.log('Chart после создания:', chart);
+					console.log('Datasets:', chart.data.datasets);
+					console.log('Data length:', chart.data.datasets[0]?.data?.length);
+				}, 1000);
+			} else {
+				console.log('✗ График не создан');
+			}
+			
+		} catch (error) {
+			console.error('Ошибка теста:', error);
+		}
+	}
     
     async function testDataProcessor() {
         log('=== Тест обработки данных ===');
