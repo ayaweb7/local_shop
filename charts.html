@@ -72,6 +72,13 @@
 			</div>
 		</div>
 		
+		<!-- Добавьте кнопки для тестирования: -->
+		<div class="test-controls">
+			<button onclick="testBarChart()">Тест Bar Chart</button>
+			<button onclick="testPieChart()">Тест Pie Chart</button>
+			<button onclick="testExport()">Тест Экспорт PNG</button>
+		</div>
+		
 		<!-- Два графика -->
 		<div class="charts-pair">
 			<div class="chart-container">
@@ -87,9 +94,27 @@
 	</div>
     
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            window.chartsApp = new ChartsApp();
-        });
+        //document.addEventListener('DOMContentLoaded', () => {
+        //    window.chartsApp = new ChartsApp();
+        //});
+		
+		async function testBarChart() {
+			const purchases = await apiClient.getPurchases();
+			const categories = await apiClient.getCategories();
+			
+			chartManager.createCategoryChart('test-chart', purchases, categories, 'bar');
+		}
+
+		async function testPieChart() {
+			const purchases = await apiClient.getPurchases();
+			const categories = await apiClient.getCategories();
+			
+			chartManager.createCategoryChart('test-chart', purchases, categories, 'pie');
+		}
+
+		function testExport() {
+			chartManager.exportChart('test-chart', 'test-export.png');
+		}
     </script>
 </body>
 </html>

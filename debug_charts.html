@@ -1,0 +1,191 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Charts</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/charts.js"></script>
+    <style>
+        body { padding: 20px; font-family: sans-serif; }
+        .chart-container { margin: 20px 0; padding: 20px; border: 1px solid #ddd; }
+        canvas { max-width: 100%; height: 400px; }
+        button { margin: 5px; padding: 10px; }
+        pre { background: #f5f5f5; padding: 10px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>Debug Charts System</h1>
+    
+    <div>
+        <button onclick="testDirectChartJS()">Тест Chart.js напрямую</button>
+        <button onclick="testOurChartManager()">Тест нашего ChartManager</button>
+        <button onclick="testDataProcessor()">Тест обработки данных</button>
+        <button onclick="clearAll()">Очистить все</button>
+    </div>
+    
+    <div id="charts"></div>
+    
+    <div id="debugOutput"></div>
+    
+    <script>
+    function log(msg) {
+        const output = document.getElementById('debugOutput');
+        output.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${msg}</div>`;
+        console.log(msg);
+    }
+    
+    function testDirectChartJS() {
+        log('=== Тест Chart.js напрямую ===');
+        
+        const container = document.getElementById('charts');
+        const canvasId = 'direct-test-' + Date.now();
+        
+        container.innerHTML += `
+            <div class="chart-container">
+                <h3>Direct Chart.js Test</h3>
+                <canvas id="${canvasId}"></canvas>
+            </div>
+        `;
+        
+        setTimeout(() => {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                log('ERROR: Canvas не найден');
+                return;
+            }
+            
+            const ctx = canvas.getContext('2d');
+            
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['A', 'B', 'C'],
+                    datasets: [{
+                        label: 'Test Data',
+                        data: [10, 20, 30],
+                        backgroundColor: ['red', 'green', 'blue']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Direct Chart.js Test'
+                        }
+                    }
+                }
+            });
+            
+            log('✓ Chart.js график создан напрямую');
+            log('Chart instance: ' + (chart ? 'SUCCESS' : 'FAILED'));
+            
+        }, 100);
+    }
+    
+    async function testOurChartManager() {
+        log('=== Тест нашего ChartManager ===');
+        
+        if (!window.chartManager) {
+            log('ERROR: chartManager не найден');
+            return;
+        }
+        
+        log('chartManager: ' + (window.chartManager ? 'FOUND' : 'NOT FOUND'));
+        
+        // Тест 1: Простые данные
+        const canvasId = 'our-test-' + Date.now();
+        const container = document.getElementById('charts');
+        
+        container.innerHTML += `
+            <div class="chart-container">
+                <h3>Our ChartManager Test</h3>
+                <canvas id="${canvasId}"></canvas>
+            </div>
+        `;
+        
+        setTimeout(() => {
+            const simpleData = {
+                labels: ['Test 1', 'Test 2', 'Test 3'],
+                datasets: [{
+                    label: 'Simple Test',
+                    data: [100, 200, 300],
+                    backgroundColor: ['#FF6B6B', '#4ECDC4', '#FFD166']
+                }]
+            };
+            
+            try {
+                const chart = chartManager.createChart(canvasId, 'bar', simpleData);
+                log('✓ Простой график создан: ' + (chart ? 'SUCCESS' : 'FAILED'));
+                
+                if (chart) {
+                    log('Chart config: ' + JSON.stringify(chart.config?.type));
+                }
+            } catch (error) {
+                log('ERROR creating simple chart: ' + error.message);
+            }
+            
+        }, 100);
+    }
+    
+    async function testDataProcessor() {
+        log('=== Тест обработки данных ===');
+        
+        try {
+            // Получаем реальные данные
+            const purchases = await apiClient.getPurchases();
+            const categories = await apiClient.getCategories();
+            
+            log(`Данные получены: ${purchases?.length} покупок, ${categories?.length} категорий`);
+            
+            if (purchases && purchases.length > 0) {
+                log('Первая покупка:');
+                log(JSON.stringify(purchases[0], null, 2));
+                
+                // Проверяем поля покупки
+                const sample = purchases[0];
+                log('Поля покупки: ' + Object.keys(sample).join(', '));
+                log(`category_id: ${sample.category_id}`);
+                log(`amount: ${sample.amount}`);
+                log(`category_name: ${sample.category_name}`);
+            }
+            
+            // Проверяем DataProcessor если есть
+            if (window.chartManager?.dataProcessor) {
+                log('DataProcessor найден');
+                
+                const processed = window.chartManager.dataProcessor.processCategoryData(purchases, categories);
+                log('Обработанные данные:');
+                log(`Labels: ${processed.labels?.length}`);
+                log(`Amounts: ${processed.amounts?.length}`);
+                log(`Colors: ${processed.colors?.length}`);
+                
+                if (processed.labels && processed.labels.length > 0) {
+                    log('Первые 3 метки: ' + processed.labels.slice(0, 3).join(', '));
+                    log('Первые 3 значения: ' + processed.amounts.slice(0, 3).join(', '));
+                }
+            } else {
+                log('WARNING: DataProcessor не найден');
+            }
+            
+        } catch (error) {
+            log('ERROR in testDataProcessor: ' + error.message);
+        }
+    }
+    
+    function clearAll() {
+        document.getElementById('charts').innerHTML = '';
+        document.getElementById('debugOutput').innerHTML = '';
+        log('Очищено');
+    }
+    
+    // Авто-тест при загрузке
+    document.addEventListener('DOMContentLoaded', () => {
+        log('=== DEBUG SYSTEM READY ===');
+        log('Chart.js: ' + (window.Chart ? 'LOADED' : 'NOT LOADED'));
+        log('chartManager: ' + (window.chartManager ? 'LOADED' : 'NOT LOADED'));
+        log('apiClient: ' + (window.apiClient ? 'LOADED' : 'NOT LOADED'));
+    });
+    </script>
+</body>
+</html>
