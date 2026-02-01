@@ -95,27 +95,160 @@
 	</div>
     
     <script>
-        //document.addEventListener('DOMContentLoaded', () => {
-        //    window.chartsApp = new ChartsApp();
-        //});
+		let currentChartType = 'categories';
+		let chartData = {};
 		
-		async function testBarChart() {
-			const purchases = await apiClient.getPurchases();
-			const categories = await apiClient.getCategories();
+		// Инициализация при загрузке
+		document.addEventListener('DOMContentLoaded', async () => {
+			console.log('Charts page loaded');
 			
-			chartManager.createCategoryChart('test-chart', purchases, categories, 'bar');
+			// Загружаем данные
+			await loadData();
+			
+			// Создаем начальные графики
+			createCategoryCharts();
+			
+			// Обработчики для переключения типов графиков
+			document.querySelectorAll('.chart-type-btn').forEach(btn => {
+				btn.addEventListener('click', function() {
+					document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+					this.classList.add('active');
+					
+					currentChartType = this.dataset.type;
+					updateCharts();
+				});
+			});
+			
+			// Обработчики фильтров
+			document.getElementById('apply-filters').addEventListener('click', updateCharts);
+			document.getElementById('reset-filters').addEventListener('click', resetFilters);
+		});
+		
+		async function loadData() {
+			try {
+				chartData.purchases = await apiClient.getPurchases();
+				chartData.categories = await apiClient.getCategories();
+				chartData.stores = await apiClient.getStores();
+				
+				console.log('Данные загружены:', {
+					purchases: chartData.purchases?.length,
+					categories: chartData.categories?.length,
+					stores: chartData.stores?.length
+				});
+			} catch (error) {
+				console.error('Ошибка загрузки данных:', error);
+				alert('Не удалось загрузить данные для графиков');
+			}
+		}
+		
+		function createCategoryCharts() {
+			if (!chartData.purchases || !chartData.categories) {
+				console.warn('Нет данных для графиков');
+				return;
+			}
+			
+			console.log('Создание графиков категорий...');
+			
+			// Левый график - столбчатая диаграмма
+			try {
+				const leftChart = chartManager.createCategoryChart(
+					'left-chart',
+					chartData.purchases,
+					chartData.categories,
+					'bar'
+				);
+				console.log('Левый график создан:', leftChart ? 'success' : 'failed');
+				
+				// Обновляем заголовок
+				document.getElementById('left-chart-title').textContent = 'Расходы по категориям (столбчатая)';
+			} catch (error) {
+				console.error('Ошибка создания левого графика:', error);
+			}
+			
+			// Правый график - круговая диаграмма
+			try {
+				const rightChart = chartManager.createCategoryChart(
+					'right-chart',
+					chartData.purchases,
+					chartData.categories,
+					'pie'
+				);
+				console.log('Правый график создан:', rightChart ? 'success' : 'failed');
+				
+				// Обновляем заголовок
+				document.getElementById('right-chart-title').textContent = 'Распределение расходов (круговая)';
+			} catch (error) {
+				console.error('Ошибка создания правого графика:', error);
+			}
+		}
+		
+		function updateCharts() {
+			// Уничтожаем старые графики
+			chartManager.destroyChart('left-chart');
+			chartManager.destroyChart('right-chart');
+			
+			// Создаем новые в зависимости от типа
+			switch(currentChartType) {
+				case 'categories':
+					createCategoryCharts();
+					break;
+				case 'months':
+					createMonthlyCharts();
+					break;
+				case 'stores':
+					createStoreCharts();
+					break;
+				// ... другие типы
+			}
+		}
+		
+		function resetFilters() {
+			document.getElementById('period-filter').value = 'all';
+			document.getElementById('year-filter-group').style.display = 'none';
+			document.getElementById('month-filter-group').style.display = 'none';
+			updateCharts();
+		}
+		
+		function createMonthlyCharts() {
+			// Левый график - столбчатая диаграмма
+			const leftChart = chartManager.createMonthlyChart(
+				'left-chart',
+				chartData.purchases,
+				'bar'
+			);
+			
+			document.getElementById('left-chart-title').textContent = 'Месячные расходы';
+			
+			// Правый график - линейный график тренда
+			try {
+				const rightChart = chartManager.createChartFromFactory(
+					'right-chart',
+					'expense-trend',
+					{ purchases: chartData.purchases },
+					{ 
+						title: 'Динамика расходов',
+						period: 'monthly'
+					}
+				);
+				document.getElementById('right-chart-title').textContent = 'Динамика расходов';
+			} catch (error) {
+				console.error('Ошибка создания графика тренда:', error);
+			}
 		}
 
-		async function testPieChart() {
-			const purchases = await apiClient.getPurchases();
-			const categories = await apiClient.getCategories();
+		function createStoreCharts() {
+			// График сравнения магазинов
+			const leftChart = chartManager.createStoreChart(
+				'left-chart',
+				chartData.purchases,
+				chartData.stores,
+				'bar'
+			);
 			
-			chartManager.createCategoryChart('test-chart', purchases, categories, 'pie');
+			document.getElementById('left-chart-title').textContent = 'Расходы по магазинам';
+			document.getElementById('right-chart-title').textContent = 'Сравнение магазинов';
 		}
+	</script>
 
-		function testExport() {
-			chartManager.exportChart('test-chart', 'test-export.png');
-		}
-    </script>
 </body>
 </html>

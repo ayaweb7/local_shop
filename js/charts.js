@@ -229,48 +229,64 @@ class DataProcessor {
     /**
      * Обработка данных по категориям - ВОЗВРАЩАЕТ ПРАВИЛЬНЫЙ ФОРМАТ ДЛЯ CHART.JS
      */
+    // УПРОЩЕННАЯ ВЕРСИЯ - возвращает ТОЛЬКО формат Chart.js
     processCategoryData(purchases, categories) {
         console.log('DataProcessor: обработка данных категорий');
-        console.log('Покупок:', purchases?.length, 'Категорий:', categories?.length);
         
-        const categoryStats = {};
+        if (!purchases || !purchases.length) {
+            return {
+                labels: [],
+                datasets: []
+            };
+        }
         
-        purchases.forEach(purchase => {
-            const categoryId = purchase.category_id;
-            if (!categoryId) return;
-            
-            if (!categoryStats[categoryId]) {
-                const category = categories.find(c => c.id == categoryId);
-                categoryStats[categoryId] = {
-                    name: category ? `${category.icon} ${category.name}` : `Категория #${categoryId}`,
-                    amount: 0,
-                    color: category ? category.color : ChartThemes.getCategoryColor(null, categoryId)
-                };
+        // Создаем мапу категорий
+        const categoryMap = {};
+        categories.forEach(cat => {
+            categoryMap[cat.id] = {
+                name: `${cat.icon} ${cat.name}`,
+                color: cat.color || ChartThemes.getCategoryColor(cat.name, cat.id)
+            };
+        });
+        
+        // Считаем суммы по категориям
+        const totals = {};
+        purchases.forEach(p => {
+            if (p.category_id) {
+                const catId = p.category_id;
+                totals[catId] = (totals[catId] || 0) + (parseFloat(p.amount) || 0);
             }
-            
-            categoryStats[categoryId].amount += parseFloat(purchase.amount) || 0;
+        });
+        
+        // Преобразуем в массивы
+        const result = [];
+        Object.keys(totals).forEach(catId => {
+            const category = categoryMap[catId];
+            if (category) {
+                result.push({
+                    name: category.name,
+                    amount: totals[catId],
+                    color: category.color
+                });
+            }
         });
         
         // Сортируем по сумме
-        const sorted = Object.values(categoryStats).sort((a, b) => b.amount - a.amount);
+        result.sort((a, b) => b.amount - a.amount);
         
-        console.log('Обработано категорий:', sorted.length);
-        if (sorted.length > 0) {
-            console.log('Первая категория:', sorted[0].name, sorted[0].amount);
-        }
-        
-        // ВАЖНО: Возвращаем в формате Chart.js
+        // Возвращаем ПРАВИЛЬНЫЙ формат для Chart.js
         return {
-            labels: sorted.map(item => item.name),
+            labels: result.map(item => item.name),
             datasets: [{
                 label: 'Сумма покупок, ₽',
-                data: sorted.map(item => item.amount),
-                backgroundColor: sorted.map(item => item.color),
-                borderColor: sorted.map(item => ChartUtils.darkenColor(item.color, 0.2)),
+                data: result.map(item => item.amount),
+                backgroundColor: result.map(item => item.color),
+                borderColor: result.map(item => ChartUtils.darkenColor(item.color, 0.2)),
                 borderWidth: 1
             }]
         };
     }
+
     
     /**
      * Обработка месячных данных
@@ -497,7 +513,7 @@ class BaseChart {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
                 animation: {
                     duration: 750,
                     easing: 'easeInOutQuart'
@@ -510,6 +526,36 @@ class BaseChart {
                         left: 20
                     }
                 },
+				scales: {  // ДОБАВИТЬ ЯВНУЮ КОНФИГУРАЦИЮ ОСЕЙ
+					y: {
+						beginAtZero: true,
+						ticks: {
+							callback: function(value) {
+								return ChartUtils.formatCurrency(value);
+							},
+							font: {
+								family: this.theme.typography.fontFamily,
+								size: 11
+							}
+						},
+						grid: {
+							color: 'rgba(0, 0, 0, 0.05)',
+							drawBorder: false
+						}
+					},
+					x: {
+						ticks: {
+							font: {
+								family: this.theme.typography.fontFamily,
+								size: 11
+							},
+							maxRotation: 45
+						},
+						grid: {
+							display: false
+						}
+					}
+				},
                 plugins: {
                     legend: {
                         position: 'top',
@@ -572,54 +618,24 @@ class BaseChart {
      * Подготовка данных - КЛЮЧЕВОЙ ИСПРАВЛЕННЫЙ МЕТОД
      */
     prepareData(rawData) {
-        console.log('BaseChart.prepareData вызван');
-        console.log('rawData:', rawData);
-        
-        if (!rawData) {
-            console.log('Нет данных, возвращаем пустые');
-            return {
-                labels: [],
-                datasets: []
-            };
-        }
-        
-        // Если rawData уже в формате Chart.js (labels и datasets)
-        if (rawData.labels && rawData.datasets) {
-            console.log('Данные уже в формате Chart.js, возвращаем как есть');
-            console.log('labels:', rawData.labels?.length);
-            console.log('datasets:', rawData.datasets?.length);
-            if (rawData.datasets && rawData.datasets[0]) {
-                console.log('Первые данные:', rawData.datasets[0].data?.slice(0, 3));
-            }
-            return rawData;
-        }
-        
-        // Если это объект с другим форматом (например, из DataProcessor)
-        if (rawData.labels && rawData.amounts) {
-            console.log('Конвертируем из формата DataProcessor в Chart.js');
-            return {
-                labels: rawData.labels,
-                datasets: [{
-                    label: rawData.datasetLabel || 'Данные',
-                    data: rawData.amounts,
-                    backgroundColor: rawData.colors || this.theme.palette,
-                    borderColor: rawData.colors ? 
-                        rawData.colors.map(color => ChartUtils.darkenColor(color, 0.2)) : 
-                        this.theme.palette.map(color => ChartUtils.darkenColor(color, 0.2)),
-                    borderWidth: 1
-                }]
-            };
-        }
-        
-        console.warn('BaseChart.prepareData: неизвестный формат данных');
-        console.log('Тип данных:', typeof rawData);
-        console.log('Ключи:', Object.keys(rawData || {}));
-        
-        return {
-            labels: [],
-            datasets: []
-        };
-    }
+		console.log('BaseChart.prepareData вызван');
+		
+		// Если нет данных
+		if (!rawData) {
+			return { labels: [], datasets: [] };
+		}
+		
+		// Если уже в формате Chart.js (labels и datasets)
+		if (rawData.labels && rawData.datasets && Array.isArray(rawData.datasets)) {
+			console.log('Данные уже в формате Chart.js');
+			return rawData;
+		}
+		
+		// Если это какие-то другие данные (старый формат)
+		console.warn('Неизвестный формат данных:', rawData);
+		return { labels: [], datasets: [] };
+	}
+
     
     /**
      * Создание графика
@@ -738,6 +754,48 @@ class PieChart extends BaseChart {
             type: 'pie',
             ...config
         });
+		
+		// Переопределяем конфигурацию для pie chart
+        this.config.options = {
+            ...this.config.options,
+            scales: {},  // Убираем оси для pie chart
+            plugins: {
+                ...this.config.options.plugins,
+                legend: {
+                    position: 'right',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        font: {
+                            family: this.theme.typography.fontFamily,
+                            size: 12
+                        },
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            if (data.labels.length && data.datasets.length) {
+                                return data.labels.map((label, i) => {
+                                    const dataset = data.datasets[0];
+                                    const value = dataset.data[i];
+                                    const color = dataset.backgroundColor[i];
+                                    
+                                    return {
+                                        text: `${label}: ${ChartUtils.formatCurrency(value)}`,
+                                        fillStyle: color,
+                                        strokeStyle: color,
+                                        lineWidth: 1,
+                                        hidden: false,
+                                        index: i
+                                    };
+                                });
+                            }
+                            return [];
+                        }
+                    }
+                }
+            }
+        };
+		
         console.log(`PieChart создан для: ${canvasId}`);
     }
 }
