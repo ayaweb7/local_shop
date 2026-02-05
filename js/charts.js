@@ -954,11 +954,156 @@ class ChartFactory {
 class ChartManager {
     constructor() {
         this.charts = new Map();
+		this.chartPairs = new Map(); // Новое: хранилище пар
         this.theme = ChartThemes.getDefaultTheme();
         this.dataProcessor = new DataProcessor();
+		this.unifiedProcessor = new UnifiedDataProcessor(); // Новый процессор
         
-        console.log('ChartManager инициализирован');
+        console.log('ChartManager инициализирован с поддержкой пар графиков');
     }
+	
+	/**
+     * Создание пары графиков (основной метод)
+     */
+    createChartPair(leftCanvasId, rightCanvasId, dataType, purchases, additionalData = [], options = {}) {
+        console.log(`Создание пары графиков: ${dataType}`);
+        
+        // Обрабатываем данные через UnifiedDataProcessor
+        const processedData = this.unifiedProcessor.process(
+            dataType, 
+            purchases, 
+            additionalData, 
+            options
+        );
+        
+        // Создаем пару графиков
+        const pair = new ChartPair(leftCanvasId, rightCanvasId, options);
+        const charts = pair.create(processedData, options);
+        
+        // Сохраняем пару
+        this.chartPairs.set(`${leftCanvasId}-${rightCanvasId}`, pair);
+        
+        return charts;
+    }
+    
+    /**
+     * Создание пары графиков по категориям
+     */
+    createCategoryPair(canvasIds, purchases, categories, options = {}) {
+        // Определяем индексную ось в зависимости от типа графика
+		const indexAxis = options.type === 'horizontalBar' ? 'y' : 'x';
+		
+		return this.createChartPair(
+            canvasIds.left || 'left-chart',
+            canvasIds.right || 'right-chart',
+            'categories',
+            purchases,
+            categories,
+            { 
+                ...options,
+                type: options.type || 'horizontalBar', // Используем переданный тип
+                indexAxis: indexAxis,
+				leftTitle: options.leftTitle || 'Сумма расходов по категориям',
+                rightTitle: options.rightTitle || 'Количество покупок по категориям'
+            }
+        );
+    }
+    
+    /**
+     * Создание пары графиков по месяцам
+     */
+    createMonthlyPair(canvasIds, purchases, options = {}) {
+        // Для месяцев вертикальная гистограмма по умолчанию
+		const defaultType = options.type || 'bar';
+		const indexAxis = defaultType === 'horizontalBar' ? 'y' : 'x';
+		
+		return this.createChartPair(
+            canvasIds.left || 'left-chart',
+            canvasIds.right || 'right-chart',
+            'months',
+            purchases,
+            [],
+            { 
+                ...options,
+                type: defaultType,
+				indexAxis: indexAxis,
+				leftTitle: options.leftTitle || 'Месячные расходы',
+				rightTitle: options.rightTitle || 'Количество покупок по месяцам'
+			}
+        );
+    }
+    
+    /**
+     * Создание пары графиков по годам
+     */
+    createYearlyPair(canvasIds, purchases, options = {}) {
+        // Для годов вертикальная гистограмма по умолчанию
+		const defaultType = options.type || 'bar';
+		const indexAxis = defaultType === 'horizontalBar' ? 'y' : 'x';
+		
+		return this.createChartPair(
+            canvasIds.left || 'left-chart',
+            canvasIds.right || 'right-chart',
+            'years',
+            purchases,
+            [],
+            { 
+                ...options,
+				type: defaultType,
+				indexAxis: indexAxis,
+				leftTitle: options.leftTitle || 'Годовые расходы',
+				rightTitle: options.rightTitle || 'Количество покупок по годам'
+			}
+        );
+    }
+	
+	/**
+	 * Создание пары графиков по магазинам
+	 */
+	createStorePair(canvasIds, purchases, stores, options = {}) {
+		// Для магазинов вертикальная гистограмма по умолчанию
+		const indexAxis = options.type === 'horizontalBar' ? 'y' : 'x';
+		
+		return this.createChartPair(
+			canvasIds.left || 'left-chart',
+			canvasIds.right || 'right-chart',
+			'stores',
+			purchases,
+			stores,
+			{ 
+				...options,
+				type: options.type || 'horizontalBar', // Используем переданный тип
+				indexAxis: indexAxis,
+				leftTitle: options.leftTitle || 'ТОП-10 магазинов по сумме',
+				rightTitle: options.rightTitle || 'ТОП-10 магазинов по количеству',
+				limit: options.limit || 10
+			}
+		);
+	}
+	
+	/**
+	 * Создание пары графиков по товарам
+	 */
+	createProductPair(canvasIds, purchases, options = {}) {
+		// Определяем индексную ось в зависимости от типа графика
+		const indexAxis = options.type === 'horizontalBar' ? 'y' : 'x';
+		
+		return this.createChartPair(
+			canvasIds.left || 'left-chart',
+			canvasIds.right || 'right-chart',
+			'products',
+			purchases,
+			[],
+			{ 
+				...options,
+				type: options.type || 'horizontalBar', // Используем переданный тип
+				indexAxis: indexAxis,
+				leftTitle: options.leftTitle || 'ТОП-10 товаров по сумме',
+				rightTitle: options.rightTitle || 'ТОП-10 товаров по количеству',
+				limit: options.limit || 10
+			}
+		);
+	}
     
     /**
      * Создание графика - ОСНОВНОЙ ИСПРАВЛЕННЫЙ МЕТОД
@@ -1120,6 +1265,23 @@ class ChartManager {
             console.log(`График ${canvasId} уничтожен`);
         }
     }
+	
+	/**
+     * Уничтожение пар графиков
+     */
+	destroyChartPair(leftCanvasId, rightCanvasId) {
+		const pairKey = `${leftCanvasId}-${rightCanvasId}`;
+		const pair = this.chartPairs.get(pairKey);
+		
+		if (pair) {
+			pair.destroy();
+			this.chartPairs.delete(pairKey);
+		}
+		
+		// Также уничтожаем отдельные графики
+		this.destroyChart(leftCanvasId);
+		this.destroyChart(rightCanvasId);
+	} 
     
     /**
      * Уничтожение всех графиков
@@ -1148,6 +1310,816 @@ class ChartManager {
      */
     getChart(canvasId) {
         return this.charts.get(canvasId);
+    }
+}
+
+// ============================================
+// УНИФИЦИРОВАННЫЙ ОБРАБОТЧИК ДАННЫХ (ДЛЯ AMOUNT/COUNT)
+// ============================================
+
+class UnifiedDataProcessor {
+    constructor() {
+        console.log('UnifiedDataProcessor initialized');
+    }
+    
+    /**
+     * Основной метод обработки - возвращает данные для пар графиков
+     * @param {string} dataType - 'categories', 'months', 'years', 'stores', 'products'
+     * @param {Array} purchases - массив покупок
+     * @param {Array} additionalData - категории, магазины и т.д.
+     * @param {Object} options - настройки
+     * @returns {Object} { amountData, countData }
+     */
+    process(dataType, purchases, additionalData = [], options = {}) {
+        console.log(`UnifiedDataProcessor.process: ${dataType}, покупок: ${purchases?.length}`);
+        
+        if (!purchases || purchases.length === 0) {
+            return {
+                amountData: { labels: [], datasets: [] },
+                countData: { labels: [], datasets: [] }
+            };
+        }
+        
+        switch(dataType) {
+            case 'categories':
+                return this._processCategories(purchases, additionalData, options);
+            case 'months':
+                return this._processMonths(purchases, options);
+            case 'years':
+                return this._processYears(purchases, options);
+            case 'stores':
+                return this._processStores(purchases, additionalData, options);
+            case 'products':
+                return this._processProducts(purchases, options);
+            default:
+                throw new Error(`Неизвестный тип данных: ${dataType}`);
+        }
+    }
+    
+    /**
+     * Обработка категорий - горизонтальная гистограмма
+     */
+    _processCategories(purchases, categories, options = {}) {
+        const stats = {};
+        const limit = options.limit || 0; // Без лимита
+        
+        // Собираем статистику
+        purchases.forEach(purchase => {
+            const catId = purchase.category_id;
+            if (!catId) return;
+            
+            if (!stats[catId]) {
+                const category = categories.find(c => c.id == catId);
+                stats[catId] = {
+                    id: catId,
+                    name: category ? `${category.icon} ${category.name}` : `Категория #${catId}`,
+                    color: category ? category.color : ChartThemes.getCategoryColor(null, catId),
+                    amount: 0,
+                    count: 0,
+                    sortOrder: category ? category.sort_order : 999
+                };
+            }
+            
+            stats[catId].amount += parseFloat(purchase.amount) || 0;
+            stats[catId].count += 1;
+        });
+        
+        // Преобразуем в массивы
+        let items = Object.values(stats);
+        
+		// Сортировка по сумме (для amount):
+		const amountSorted = limit > 0 ? 
+			[...items].sort((a, b) => b.amount - a.amount).slice(0, limit) :
+			[...items].sort((a, b) => b.amount - a.amount);
+		
+		// Сортировка по количеству (для count):
+		const countSorted = limit > 0 ? 
+			[...items].sort((a, b) => b.count - a.count).slice(0, limit) :
+			[...items].sort((a, b) => b.count - a.count);
+		
+        // Формируем данные для amount (сумма)
+        const amountData = {
+            labels: amountSorted.map(item => item.name),
+            datasets: [{
+                label: 'Сумма расходов, ₽',
+                data: amountSorted.map(item => item.amount),
+                backgroundColor: amountSorted.map(item => item.color),
+                borderColor: amountSorted.map(item => ChartUtils.darkenColor(item.color, 0.2)),
+                borderWidth: 1
+            }]
+        };
+        
+        // Формируем данные для count (количество)
+        const countData = {
+            labels: countSorted.map(item => item.name),
+            datasets: [{
+                label: 'Количество покупок',
+                data: countSorted.map(item => item.count),
+                backgroundColor: countSorted.map(item => item.color),
+                borderColor: countSorted.map(item => ChartUtils.darkenColor(item.color, 0.2)),
+                borderWidth: 1
+            }]
+        };
+        
+        return { amountData, countData };
+    }
+    
+    /**
+     * Обработка месяцев - вертикальная гистограмма
+     */
+    _processMonths(purchases, options = {}) {
+        const monthNames = [
+            'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+            'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+        ];
+        
+        const stats = {};
+        
+        // Инициализируем все месяцы
+        for (let i = 1; i <= 12; i++) {
+            stats[i] = {
+                month: i,
+                name: monthNames[i-1],
+                amount: 0,
+                count: 0
+            };
+        }
+        
+        // Собираем статистику
+        purchases.forEach(purchase => {
+            if (!purchase.date) return;
+            
+            const date = new Date(purchase.date);
+            const month = date.getMonth() + 1; // 1-12
+            
+            stats[month].amount += parseFloat(purchase.amount) || 0;
+            stats[month].count += 1;
+        });
+        
+        // Преобразуем в массивы (уже отсортированы по месяцам)
+        const items = Object.values(stats);
+        
+        // Формируем данные для amount (сумма)
+        const amountData = {
+            labels: items.map(item => item.name),
+            datasets: [{
+                label: 'Сумма расходов, ₽',
+                data: items.map(item => item.amount),
+                backgroundColor: '#3498db',
+                borderColor: '#2980b9',
+                borderWidth: 1
+            }]
+        };
+        
+        // Формируем данные для count (количество)
+        const countData = {
+            labels: items.map(item => item.name),
+            datasets: [{
+                label: 'Количество покупок',
+                data: items.map(item => item.count),
+                backgroundColor: '#2ecc71',
+                borderColor: '#27ae60',
+                borderWidth: 1
+            }]
+        };
+        
+        return { amountData, countData };
+    }
+    
+    /**
+     * Обработка годов
+     */
+    _processYears(purchases, options = {}) {
+        const stats = {};
+        
+        // Собираем статистику
+        purchases.forEach(purchase => {
+            if (!purchase.date) return;
+            
+            const date = new Date(purchase.date);
+            const year = date.getFullYear();
+            
+            if (!stats[year]) {
+                stats[year] = {
+                    year: year,
+                    name: `${year} год`,
+                    amount: 0,
+                    count: 0
+                };
+            }
+            
+            stats[year].amount += parseFloat(purchase.amount) || 0;
+            stats[year].count += 1;
+        });
+        
+        // Сортируем по году
+        const items = Object.values(stats).sort((a, b) => a.year - b.year);
+        
+        // Формируем данные
+        const amountData = {
+            labels: items.map(item => item.name),
+            datasets: [{
+                label: 'Сумма расходов, ₽',
+                data: items.map(item => item.amount),
+                backgroundColor: '#e74c3c',
+                borderColor: '#c0392b',
+                borderWidth: 1
+            }]
+        };
+        
+        const countData = {
+            labels: items.map(item => item.name),
+            datasets: [{
+                label: 'Количество покупок',
+                data: items.map(item => item.count),
+                backgroundColor: '#9b59b6',
+                borderColor: '#8e44ad',
+                borderWidth: 1
+            }]
+        };
+        
+        return { amountData, countData };
+    }
+    
+    /**
+     * Обработка ТОП магазинов
+     */
+	_processStores(purchases, stores, options = {}) {
+		const limit = options.limit || 10;
+		const stats = {};
+		
+		// Собираем статистику
+		purchases.forEach(purchase => {
+			const storeId = purchase.store_id;
+			if (!storeId) return;
+			
+			if (!stats[storeId]) {
+				const store = stores.find(s => s.id == storeId);
+				stats[storeId] = {
+					id: storeId,
+					name: store ? store.shop : `Магазин #${storeId}`,
+					city: store ? store.city_name : '',
+					amount: 0,
+					count: 0
+				};
+			}
+			
+			stats[storeId].amount += parseFloat(purchase.amount) || 0;
+			stats[storeId].count += 1;
+		});
+		
+		// Преобразуем в массивы и сортируем
+		let items = Object.values(stats);
+		
+		// Сортируем по сумме (для amount) или количеству (для count)
+		const amountSorted = [...items]
+			.sort((a, b) => b.amount - a.amount)
+			.slice(0, limit);
+		
+		const countSorted = [...items]
+			.sort((a, b) => b.count - a.count)
+			.slice(0, limit);
+		
+		// Генерируем цвета для магазинов
+		const generateStoreColors = (items) => {
+			return items.map((item, index) => {
+				// Используем разные цвета для магазинов
+				const storeColors = [
+					'#FF6B6B', '#4ECDC4', '#FFD166', '#06D6A0', '#118AB2',
+					'#EF476F', '#FFD166', '#06D6A0', '#073B4C', '#7209B7'
+				];
+				return storeColors[index % storeColors.length];
+			});
+		};
+		
+		// Формируем данные для amount (сумма)
+		const amountData = {
+			labels: amountSorted.map(item => {
+				// Сокращаем длинные названия магазинов
+				const name = item.name.length > 20 ? 
+					item.name.substring(0, 20) + '...' : 
+					item.name;
+				return `${name} (${item.city || '?'})`;
+			}),
+			datasets: [{
+				label: 'Сумма покупок, ₽',
+				data: amountSorted.map(item => item.amount),
+				backgroundColor: generateStoreColors(amountSorted),
+				borderColor: generateStoreColors(amountSorted).map(color => 
+					ChartUtils.darkenColor(color, 0.2)
+				),
+				borderWidth: 1
+			}]
+		};
+		
+		// Формируем данные для count (количество)
+		const countData = {
+			labels: countSorted.map(item => {
+				const name = item.name.length > 20 ? 
+					item.name.substring(0, 20) + '...' : 
+					item.name;
+				return `${name} (${item.city || '?'})`;
+			}),
+			datasets: [{
+				label: 'Количество покупок',
+				data: countSorted.map(item => item.count),
+				backgroundColor: generateStoreColors(countSorted),
+				borderColor: generateStoreColors(countSorted).map(color => 
+					ChartUtils.darkenColor(color, 0.2)
+				),
+				borderWidth: 1
+			}]
+		};
+		
+		console.log(`Обработано магазинов: ${items.length}, показано: ${limit}`);
+		
+		return { amountData, countData };
+	}
+    
+	/**
+     * Обработка ТОП товаров
+     */
+    _processProducts(purchases, options = {}) {
+		const limit = options.limit || 10;
+		const stats = {};
+		
+		// Собираем статистику по названиям товаров
+		purchases.forEach(purchase => {
+			const productName = purchase.name;
+			if (!productName) return;
+			
+			const key = productName.toLowerCase().trim();
+			
+			if (!stats[key]) {
+				stats[key] = {
+					name: productName,
+					amount: 0,
+					count: 0,
+					unit: purchase.item || 'шт.',
+					lastPrice: parseFloat(purchase.price) || 0,
+					lastDate: purchase.date
+				};
+			}
+			
+			stats[key].amount += parseFloat(purchase.amount) || 0;
+			stats[key].count += 1;
+			
+			// Обновляем последнюю цену и дату
+			if (purchase.date > stats[key].lastDate) {
+				stats[key].lastPrice = parseFloat(purchase.price) || 0;
+				stats[key].lastDate = purchase.date;
+			}
+		});
+		
+		// Преобразуем в массивы и сортируем
+		let items = Object.values(stats);
+		
+		// Сортируем по сумме (для amount) или количеству (для count)
+		const amountSorted = [...items]
+			.sort((a, b) => b.amount - a.amount)
+			.slice(0, limit);
+		
+		const countSorted = [...items]
+			.sort((a, b) => b.count - a.count)
+			.slice(0, limit);
+		
+		// Генерируем цвета для товаров
+		const generateProductColors = (items) => {
+			return items.map((item, index) => {
+				const productColors = [
+					'#FF6B6B', '#4ECDC4', '#FFD166', '#06D6A0', '#118AB2',
+					'#EF476F', '#FF9A00', '#00C896', '#6A11CB', '#2575FC'
+				];
+				return productColors[index % productColors.length];
+			});
+		};
+		
+		// Формируем метки с дополнительной информацией
+		const createProductLabel = (item, showPrice = false) => {
+			let label = item.name;
+			
+			// Сокращаем длинные названия
+			if (label.length > 25) {
+				label = label.substring(0, 25) + '...';
+			}
+			
+			// Добавляем единицу измерения
+			label += ` (${item.unit})`;
+			
+			// Можно добавить последнюю цену
+			if (showPrice && item.lastPrice > 0) {
+				label += ` ~${ChartUtils.formatCurrency(item.lastPrice)}`;
+			}
+			
+			return label;
+		};
+		
+		// Формируем данные для amount (сумма)
+		const amountData = {
+			labels: amountSorted.map(item => createProductLabel(item, true)),
+			datasets: [{
+				label: 'Сумма покупок, ₽',
+				data: amountSorted.map(item => item.amount),
+				backgroundColor: generateProductColors(amountSorted),
+				borderColor: generateProductColors(amountSorted).map(color => 
+					ChartUtils.darkenColor(color, 0.2)
+				),
+				borderWidth: 1
+			}]
+		};
+		
+		// Формируем данные для count (количество)
+		const countData = {
+			labels: countSorted.map(item => createProductLabel(item)),
+			datasets: [{
+				label: 'Количество покупок',
+				data: countSorted.map(item => item.count),
+				backgroundColor: generateProductColors(countSorted),
+				borderColor: generateProductColors(countSorted).map(color => 
+					ChartUtils.darkenColor(color, 0.2)
+				),
+				borderWidth: 1
+			}]
+		};
+		
+		console.log(`Обработано товаров: ${items.length}, показано: ${limit}`);
+		
+		return { amountData, countData };
+	}
+    
+    /**
+     * Фильтрация покупок по году
+     */
+    filterByYear(purchases, year) {
+        if (!year || year === 'all') return purchases;
+        
+        return purchases.filter(purchase => {
+            if (!purchase.date) return false;
+            const date = new Date(purchase.date);
+            return date.getFullYear() == year;
+        });
+    }
+    
+    /**
+     * Фильтрация покупок по году и месяцу
+     */
+    filterByYearMonth(purchases, year, month) {
+        if (!year || !month) return purchases;
+        
+        return purchases.filter(purchase => {
+            if (!purchase.date) return false;
+            const date = new Date(purchase.date);
+            return date.getFullYear() == year && (date.getMonth() + 1) == month;
+        });
+    }
+    
+    /**
+     * Получение списка уникальных годов из покупок
+     */
+    getAvailableYears(purchases) {
+        const years = new Set();
+        
+        purchases.forEach(purchase => {
+            if (purchase.date) {
+                const date = new Date(purchase.date);
+                years.add(date.getFullYear());
+            }
+        });
+        
+        return Array.from(years).sort((a, b) => b - a); // Сортировка по убыванию
+    }
+	
+	/**
+     * Получение для фильтрации только существующие комбинации месяц-год
+     */
+	getAvailableMonths(purchases, year) {
+		const months = new Set();
+		
+		purchases.forEach(purchase => {
+			if (purchase.date) {
+				const date = new Date(purchase.date);
+				if (!year || date.getFullYear() == year) {
+					months.add(date.getMonth() + 1); // 1-12
+				}
+			}
+		});
+		
+		// Сортируем и возвращаем с названиями
+		const monthNames = [
+			'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+			'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+		];
+		
+		return Array.from(months)
+			.sort((a, b) => a - b)
+			.map(month => ({
+				value: month,
+				name: monthNames[month - 1]
+			}));
+	}
+}
+
+// ============================================
+// КЛАСС ДЛЯ УПРАВЛЕНИЯ ПАРОЙ ГРАФИКОВ
+// ============================================
+
+class ChartPair {
+    constructor(leftCanvasId, rightCanvasId, options = {}) {
+        this.leftCanvasId = leftCanvasId;
+        this.rightCanvasId = rightCanvasId;
+        this.leftChart = null;
+        this.rightChart = null;
+        
+        this.config = {
+            type: options.type || 'bar', // 'bar', 'horizontalBar', 'pie'
+            leftTitle: options.leftTitle || 'Сумма расходов',
+            rightTitle: options.rightTitle || 'Количество покупок',
+            showAmount: options.showAmount !== false,
+            showCount: options.showCount !== false,
+            indexAxis: options.indexAxis // 'x' или 'y' для гистограмм
+        };
+        
+        console.log(`ChartPair создан: ${leftCanvasId} + ${rightCanvasId}`);
+    }
+    
+    /**
+     * Создание пары графиков
+     */
+    create(dataPair, customOptions = {}) {
+        const options = { ...this.config, ...customOptions };
+        
+        // Уничтожаем старые графики
+        this.destroy();
+		
+		// Также удаляем из chartManager
+		chartManager.destroyChart(this.leftCanvasId);
+		chartManager.destroyChart(this.rightCanvasId);
+        
+        // Левый график - сумма
+        if (options.showAmount && dataPair.amountData) {
+            const chartOptions = this._getChartOptions('left', options);
+            this.leftChart = this._createSingleChart(
+                this.leftCanvasId, 
+                dataPair.amountData, 
+                chartOptions
+            );
+            
+            // Обновляем заголовок
+            this._updateChartTitle(this.leftCanvasId, options.leftTitle);
+        }
+        
+        // Правый график - количество
+        if (options.showCount && dataPair.countData) {
+            const chartOptions = this._getChartOptions('right', options);
+            this.rightChart = this._createSingleChart(
+                this.rightCanvasId, 
+                dataPair.countData, 
+                chartOptions
+            );
+            
+            // Обновляем заголовок
+            this._updateChartTitle(this.rightCanvasId, options.rightTitle);
+        }
+        
+        return { left: this.leftChart, right: this.rightChart };
+    }
+    
+    /**
+     * Создание одиночного графика
+     */
+    _createSingleChart(canvasId, data, options) {
+		try {
+			// УНИЧТОЖАЕМ старый график если он существует
+			const existingChart = chartManager.getChart(canvasId);
+			if (existingChart) {
+				existingChart.destroy();
+			}
+			
+			let chart;
+			const chartType = options.type;
+			
+			if (chartType === 'horizontalBar') {
+				// Горизонтальная гистограмма с правильными метками
+				chart = new BarChart(canvasId, {
+					type: 'bar',
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						indexAxis: 'y', // КЛЮЧЕВОЙ ПАРАМЕТР
+						plugins: {
+							legend: { display: false },
+							tooltip: {
+								callbacks: {
+									label: (context) => {
+										const value = context.raw || 0;
+										if (options.isAmountChart) {
+											return ChartUtils.formatCurrency(value);
+										}
+										return ChartUtils.formatNumber(value, 0) + ' шт.';
+									}
+								}
+							}
+						},
+						scales: {
+							x: {
+								beginAtZero: true,
+								ticks: {
+									callback: (value) => {
+										if (options.isAmountChart) {
+											return ChartUtils.formatCurrency(value);
+										}
+										return ChartUtils.formatNumber(value, 0);
+									}
+								}
+							},
+							y: {
+								ticks: {
+									autoSkip: false,
+									padding: 10,
+									font: {
+										size: 12
+									},
+									// Используем коллбек для получения меток
+									callback: function(value, index) {
+										// Получаем метку из данных графика
+										const chart = this.chart;
+										if (chart && chart.data && chart.data.labels) {
+											return chart.data.labels[index];
+										}
+										return '';
+									}
+								},
+								grid: {
+									drawBorder: false,
+									display: true
+								}
+							}
+						},
+						layout: {
+							padding: {
+								left: 5 // Отступ слева для длинных названий категорий
+							}
+						}
+					}
+				});
+			} else if (chartType === 'bar') {
+				// Вертикальная гистограмма
+				chart = new BarChart(canvasId, {
+					type: 'bar',
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						plugins: {
+							legend: { display: false },
+							tooltip: {
+								callbacks: {
+									label: (context) => {
+										const value = context.raw || 0;
+										if (options.isAmountChart) {
+											return ChartUtils.formatCurrency(value);
+										}
+										return ChartUtils.formatNumber(value, 0) + ' шт.';
+									}
+								}
+							}
+						},
+						scales: {
+							y: {
+								beginAtZero: true,
+								ticks: {
+									callback: (value) => {
+										if (options.isAmountChart) {
+											return ChartUtils.formatCurrency(value);
+										}
+										return ChartUtils.formatNumber(value, 0);
+									}
+								}
+							},
+							x: {
+								ticks: {
+									autoSkip: false,
+									maxRotation: 45
+								},
+								grid: {
+									display: false
+								}
+							}
+						}
+					}
+				});
+			} else {
+				// Другие типы графиков
+				chart = chartType === 'pie' ? new PieChart(canvasId) : new BarChart(canvasId);
+			}
+			
+			// Создаем график
+			const chartInstance = chart.create(data);
+			
+			// Сохраняем в менеджере
+			if (chartInstance) {
+				chartManager.charts.set(canvasId, chart);
+			}
+			
+			return chartInstance;
+			
+		} catch (error) {
+			console.error(`Ошибка создания графика ${canvasId}:`, error);
+			return null;
+		}
+	}
+    
+    /**
+     * Получение настроек для конкретного графика
+     */
+    _getChartOptions(side, pairOptions) {
+        const isLeft = side === 'left';
+        
+        return {
+            type: pairOptions.type,
+            indexAxis: pairOptions.indexAxis,
+            isAmountChart: isLeft,
+            // Дополнительные настройки в зависимости от типа
+        };
+    }
+    
+    /**
+     * Общие настройки для графиков
+     */
+    _getCommonOptions() {
+        return {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false // Легенду убираем, так как у нас только один набор данных
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const label = context.dataset.label || '';
+                            const value = context.raw || 0;
+                            
+                            if (label.includes('Сумма') || label.includes('₽')) {
+                                return `${label}: ${ChartUtils.formatCurrency(value)}`;
+                            }
+                            return `${label}: ${ChartUtils.formatNumber(value, 0)}`;
+                        }
+                    }
+                }
+            }
+        };
+    }
+    
+    /**
+     * Обновление заголовка графика
+     */
+    _updateChartTitle(canvasId, title) {
+        const container = document.getElementById(canvasId).closest('.chart-container');
+        if (container) {
+            const titleElement = container.querySelector('h3');
+            if (titleElement) {
+                titleElement.textContent = title;
+            }
+        }
+    }
+    
+    /**
+     * Обновление данных
+     */
+    update(dataPair) {
+        if (this.leftChart && dataPair.amountData) {
+            this.leftChart.update(dataPair.amountData);
+        }
+        if (this.rightChart && dataPair.countData) {
+            this.rightChart.update(dataPair.countData);
+        }
+    }
+    
+    /**
+     * Уничтожение графиков
+     */
+    destroy() {
+        if (this.leftChart) {
+            this.leftChart.destroy();
+            this.leftChart = null;
+        }
+        if (this.rightChart) {
+            this.rightChart.destroy();
+            this.rightChart = null;
+        }
+    }
+    
+    /**
+     * Экспорт графиков
+     */
+    exportToPNG(filenamePrefix = 'chart-pair') {
+        const leftName = `${filenamePrefix}-left-${new Date().toISOString().slice(0, 10)}.png`;
+        const rightName = `${filenamePrefix}-right-${new Date().toISOString().slice(0, 10)}.png`;
+        
+        if (this.leftChart) this.leftChart.exportToPNG(leftName);
+        if (this.rightChart) this.rightChart.exportToPNG(rightName);
+        
+        return { left: leftName, right: rightName };
     }
 }
 
