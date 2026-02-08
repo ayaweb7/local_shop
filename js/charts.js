@@ -287,7 +287,6 @@ class DataProcessor {
         };
     }
 
-    
     /**
      * Обработка месячных данных
      */
@@ -447,12 +446,15 @@ class DataProcessor {
 class BaseChart {
     constructor(canvasId, config = {}) {
         console.log(`BaseChart создается для: ${canvasId}`);
+		console.log('BaseChart constructor called with:', { canvasId, config });
+		console.log('config.type:', config.type);
+		
         this.canvasId = canvasId;
         this.theme = ChartThemes.getDefaultTheme();
+		this.chartType = config.type || 'bar'; // Сохраняем тип графика отдельно
         this.config = this.mergeConfigs(config);
         this.chart = null;
-        this.dataLabelsEnabled = true;
-        
+		
         // Проверяем существование canvas
         this.canvas = document.getElementById(canvasId);
         if (!this.canvas) {
@@ -461,7 +463,7 @@ class BaseChart {
         }
         
         this.ctx = this.canvas.getContext('2d');
-        console.log(`BaseChart инициализирован для: ${canvasId}`);
+        console.log(`BaseChart инициализирован для: ${canvasId}, тип: ${this.chartType}`);
     }
     
     /**
@@ -505,18 +507,35 @@ class BaseChart {
      * Базовая конфигурация графика
      */
     getDefaultConfig() {
-        return {
-            type: 'bar',
+        // Определяем тип графика для использования в конфигурации
+        const chartType = this.chartType || 'bar';
+        
+        // Проверяем, доступен ли плагин datalabels
+        const datalabelsPlugin = typeof ChartDataLabels !== 'undefined' ? ChartDataLabels : null;
+        if (datalabelsPlugin) {
+            try {
+                Chart.register(datalabelsPlugin);
+                console.log('Плагин DataLabels зарегистрирован');
+            } catch (e) {
+                console.warn('Не удалось зарегистрировать DataLabels:', e);
+            }
+        }
+        
+        // Базовый конфиг
+        const baseConfig = {
+            type: chartType,
             data: {
                 labels: [],
                 datasets: []
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 animation: {
-                    duration: 750,
-                    easing: 'easeInOutQuart'
+                    duration: 800,
+                    easing: 'easeInOutQuart',
+                    animateScale: true,
+                    animateRotate: true
                 },
                 layout: {
                     padding: {
@@ -526,37 +545,29 @@ class BaseChart {
                         left: 20
                     }
                 },
-				scales: {  // ДОБАВИТЬ ЯВНУЮ КОНФИГУРАЦИЮ ОСЕЙ
-					y: {
-						beginAtZero: true,
-						ticks: {
-							callback: function(value) {
-								return ChartUtils.formatCurrency(value);
-							},
-							font: {
-								family: this.theme.typography.fontFamily,
-								size: 11
-							}
-						},
-						grid: {
-							color: 'rgba(0, 0, 0, 0.05)',
-							drawBorder: false
-						}
-					},
-					x: {
-						ticks: {
-							font: {
-								family: this.theme.typography.fontFamily,
-								size: 11
-							},
-							maxRotation: 45
-						},
-						grid: {
-							display: false
-						}
-					}
-				},
                 plugins: {
+                    // ПЛАГИН ПОДПИСЕЙ ДАННЫХ
+                    datalabels: datalabelsPlugin ? {
+                        display: true, // По умолчанию включены
+                        color: '#333',
+                        font: {
+                            family: this.theme.typography.fontFamily,
+                            size: 11,
+                            weight: 'bold'
+                        },
+                        formatter: (value, context) => {
+                            return this.formatDataLabel(value, context, chartType);
+                        },
+                        anchor: 'end',
+                        align: 'top',
+                        offset: 4,
+                        clamp: true,
+                        textAlign: 'center',
+                        // Конфигурация для разных типов графиков
+                        ...this.getDataLabelsConfig(chartType)
+                    } : undefined,
+                    
+                    // Легенда
                     legend: {
                         position: 'top',
                         labels: {
@@ -569,8 +580,10 @@ class BaseChart {
                             }
                         }
                     },
+                    
+                    // Всплывающие подсказки
                     tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
                         titleFont: {
                             family: this.theme.typography.fontFamily,
                             size: this.theme.typography.fontSize,
@@ -581,26 +594,219 @@ class BaseChart {
                             size: this.theme.typography.fontSize
                         },
                         padding: 12,
-                        cornerRadius: 6,
+                        cornerRadius: 8,
                         displayColors: true,
+                        boxPadding: 6,
                         callbacks: {
                             label: (context) => {
                                 const label = context.dataset.label || '';
                                 const value = context.raw || 0;
+                                const total = context.chart.data.datasets[0]?.data?.reduce((a, b) => a + b, 0) || 0;
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
                                 
+                                let formattedValue;
                                 if (label.toLowerCase().includes('сумма') || 
                                     label.toLowerCase().includes('руб') ||
                                     label.toLowerCase().includes('₽')) {
-                                    return `${label}: ${ChartUtils.formatCurrency(value)}`;
+                                    formattedValue = ChartUtils.formatCurrency(value);
+                                } else {
+                                    formattedValue = ChartUtils.formatNumber(value, 0);
                                 }
                                 
-                                return `${label}: ${ChartUtils.formatNumber(value, 2)}`;
+                                return [
+                                    `${label}: ${formattedValue}`,
+                                    `Доля: ${percentage}%`,
+                                    `Позиция: ${context.dataIndex + 1}/${context.chart.data.labels.length}`
+                                ];
                             }
                         }
                     }
-                }
+                },
+                // Настройки для разных типов графиков
+                ...this.getTypeSpecificConfig(chartType)
             }
         };
+        
+        // Добавляем оси для соответствующих типов графиков
+        if (chartType !== 'pie' && chartType !== 'doughnut') {
+            baseConfig.options.scales = {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => ChartUtils.formatCurrency(value),
+                        font: {
+                            family: this.theme.typography.fontFamily,
+                            size: 11
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: {
+                            family: this.theme.typography.fontFamily,
+                            size: 11
+                        },
+                        maxRotation: 45
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            };
+            
+            // Дополнительные настройки для горизонтальных гистограмм
+            if (chartType === 'horizontalBar') {
+                baseConfig.options.indexAxis = 'y';
+                baseConfig.options.scales = {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => ChartUtils.formatCurrency(value)
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            autoSkip: false,
+                            font: {
+                                size: 11
+                            }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                };
+            }
+        }
+        
+        return baseConfig;
+    }
+	
+	/**
+     * Форматирование подписи данных
+     */
+    formatDataLabel(value, context, chartType) {
+        const datasetLabel = context.dataset.label || '';
+        
+        // Определяем формат в зависимости от типа данных
+        if (datasetLabel.toLowerCase().includes('сумма') || 
+            datasetLabel.toLowerCase().includes('руб') ||
+            datasetLabel.toLowerCase().includes('₽')) {
+            
+            // Для денежных значений
+            if (chartType === 'pie' || chartType === 'doughnut') {
+                // Для круговых диаграмм можно показывать проценты
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                return `${ChartUtils.formatCurrency(value, '', 0)}\n(${percentage}%)`;
+            }
+            
+            return ChartUtils.formatCurrency(value, '', 0); // Без символа валюты в подписи
+        }
+        
+        // Для количественных значений
+        return ChartUtils.formatNumber(value, 0);
+    }
+	
+	/**
+	 * Конфигурация подписей для разных типов графиков
+	 */
+	getDataLabelsConfig(chartType) {
+        switch(chartType) {
+            case 'bar':
+                return {
+                    anchor: 'end',
+                    align: 'top',
+                    offset: 2,
+                    clamp: true,
+                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                    borderRadius: 4,
+                    padding: 4
+                };
+                
+            case 'horizontalBar':
+                return {
+                    anchor: 'end',
+                    align: 'center',
+                    offset: 2,
+                    clamp: true,
+                    textAlign: 'left'
+                };
+                
+            case 'pie':
+            case 'doughnut':
+                return {
+                    anchor: 'center',
+                    align: 'center',
+                    color: '#fff',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                    font: {
+                        size: 10
+                    }
+                };
+                
+            case 'line':
+                return {
+                    anchor: 'center',
+                    align: 'top',
+                    offset: 10,
+                    display: false // Для линейных графиков лучше отключить
+                };
+                
+            default:
+                return {};
+        }
+    }
+    
+    /**
+     * Типоспецифичная конфигурация
+     */
+    getTypeSpecificConfig(chartType) {
+        switch(chartType) {
+            case 'pie':
+            case 'doughnut':
+                return {
+                    scales: {}, // Убираем оси для круговых диаграмм
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map((label, i) => {
+                                            const dataset = data.datasets[0];
+                                            const value = dataset.data[i];
+                                            const total = dataset.data.reduce((a, b) => a + b, 0);
+                                            const percentage = total > 0 ? 
+                                                Math.round((value / total) * 100) : 0;
+                                            
+                                            return {
+                                                text: `${label}: ${ChartUtils.formatCurrency(value)} (${percentage}%)`,
+                                                fillStyle: dataset.backgroundColor[i],
+                                                strokeStyle: dataset.borderColor?.[i] || dataset.backgroundColor[i],
+                                                lineWidth: 1,
+                                                hidden: false,
+                                                index: i
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            }
+                        }
+                    }
+                };
+                
+            default:
+                return {};
+        }
     }
     
     /**
@@ -636,12 +842,11 @@ class BaseChart {
 		return { labels: [], datasets: [] };
 	}
 
-    
     /**
      * Создание графика
      */
     create(data = null) {
-        console.log(`BaseChart.create для ${this.canvasId}`);
+        console.log(`BaseChart.create для ${this.canvasId}, тип: ${this.chartType}`);
         
         try {
             // Уничтожаем старый график если есть
@@ -663,18 +868,13 @@ class BaseChart {
                 datasetsCount: this.config.data?.datasets?.length
             });
             
-            if (this.config.data?.datasets?.[0]?.data) {
-                console.log('Первые 3 значения:', this.config.data.datasets[0].data.slice(0, 3));
-            }
-            
             // Создаем график
             this.chart = new Chart(this.ctx, this.config);
             
             // Сохраняем ссылку на график в canvas
             this.canvas.chartInstance = this.chart;
             
-            console.log(`График создан: ${this.canvasId}`);
-            console.log('Chart instance:', this.chart);
+            console.log(`График создан: ${this.canvasId}, тип: ${this.chartType}`);
             
             return this.chart;
             
@@ -684,6 +884,48 @@ class BaseChart {
         }
     }
     
+	/**
+     * Обновление видимости подписей данных
+     */
+    updateDataLabelsVisibility(visible) {
+        if (!this.chart || !this.chart.config.options.plugins.datalabels) {
+            return false;
+        }
+        
+        this.chart.config.options.plugins.datalabels.display = visible;
+        this.chart.update();
+        return true;
+    }
+    
+    /**
+     * Обновление формата подписей (проценты/значения для круговых)
+     */
+    updateDataLabelsFormat(showPercentages) {
+        if (!this.chart || !this.chart.config.options.plugins.datalabels) {
+            return false;
+        }
+        
+        // Сохраняем настройку глобально
+        window.showPercentages = showPercentages;
+        
+        if (this.chartType === 'pie' || this.chartType === 'doughnut') {
+            this.chart.config.options.plugins.datalabels.formatter = (value, context) => {
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                
+                if (showPercentages) {
+                    return `${percentage}%`;
+                }
+                
+                return `${ChartUtils.formatCurrency(value, '', 0)}\n(${percentage}%)`;
+            };
+            
+            this.chart.update();
+        }
+        
+        return true;
+    }
+	
     /**
      * Обновление данных графика
      */
@@ -1291,19 +1533,345 @@ class ChartManager {
         this.charts.clear();
         console.log('Все графики уничтожены');
     }
-    
+	
+	//** ЭКСПОРТ ГРАФИКОВ **//
     /**
-     * Экспорт графика в PNG
-     */
-    exportChart(canvasId, filename = null) {
-        const chart = this.charts.get(canvasId);
-        if (!chart) {
-            console.warn(`График ${canvasId} не найден для экспорта`);
-            return null;
-        }
-        
-        return chart.exportToPNG(filename);
-    }
+	 * Экспорт графика в PNG
+	 */
+	exportChartToPNG(canvasId, options = {}) {
+		const canvas = document.getElementById(canvasId);
+		if (!canvas) {
+			console.error(`Canvas ${canvasId} не найден`);
+			return null;
+		}
+		
+		const chart = canvas.chartInstance;
+		if (!chart) {
+			console.error(`График ${canvasId} не найден`);
+			return null;
+		}
+		
+		// Опции экспорта
+		const exportOptions = {
+			filename: options.filename || this.generateExportFilename(canvasId),
+			quality: options.quality || 1.0,
+			backgroundColor: options.backgroundColor || 'white',
+			padding: options.padding || 20,
+			includeTitle: options.includeTitle !== false,
+			includeLegend: options.includeLegend !== false,
+			...options
+		};
+		
+		// Создаем временный canvas для экспорта
+		const exportCanvas = this.createExportCanvas(canvas, chart, exportOptions);
+		
+		// Экспортируем
+		return this.downloadCanvasAsPNG(exportCanvas, exportOptions.filename, exportOptions.quality);
+	}
+
+	/**
+	 * Создание canvas для экспорта с улучшениями
+	 */
+	createExportCanvas(originalCanvas, chart, options) {
+		const originalWidth = originalCanvas.width;
+		const originalHeight = originalCanvas.height;
+		
+		// Увеличиваем размер для лучшего качества
+		const scale = 2; // 2x для retina/печати
+		const width = originalWidth * scale;
+		const height = originalHeight * scale;
+		const padding = options.padding * scale;
+		
+		// Создаем временный canvas
+		const exportCanvas = document.createElement('canvas');
+		exportCanvas.width = width + (padding * 2);
+		exportCanvas.height = height + (padding * 2) + (options.includeTitle ? 60 * scale : 0);
+		
+		const ctx = exportCanvas.getContext('2d');
+		
+		// Заливаем фон
+		ctx.fillStyle = options.backgroundColor;
+		ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+		
+		// Добавляем заголовок если нужно
+		let yOffset = padding;
+		if (options.includeTitle) {
+			this.addTitleToExport(ctx, chart, exportCanvas.width, scale, yOffset);
+			yOffset += 50 * scale;
+		}
+		
+		// Копируем оригинальный график
+		ctx.drawImage(
+			originalCanvas,
+			0, 0, originalWidth, originalHeight,
+			padding, yOffset, width, height
+		);
+		
+		// Добавляем легенду если нужно
+		if (options.includeLegend && chart.legend && chart.legend.legendItems) {
+			this.addLegendToExport(ctx, chart, exportCanvas.width, scale, yOffset + height + 10);
+		}
+		
+		// Добавляем подпись с датой
+		this.addFooterToExport(ctx, exportCanvas.width, exportCanvas.height, scale);
+		
+		return exportCanvas;
+	}
+
+	/**
+	 * Добавление заголовка к экспорту
+	 */
+	addTitleToExport(ctx, chart, width, scale, yOffset) {
+		const title = chart.options?.plugins?.title?.text || 
+					  chart.canvas?.closest('.chart-container')?.querySelector('h3')?.textContent ||
+					  'График покупок';
+		
+		ctx.fillStyle = '#333';
+		ctx.font = `${24 * scale}px ${ChartThemes.getDefaultTheme().typography.fontFamily}`;
+		ctx.textAlign = 'center';
+		ctx.fillText(title, width / 2, yOffset + (30 * scale));
+		
+		// Подзаголовок с датой
+		ctx.fillStyle = '#666';
+		ctx.font = `${14 * scale}px ${ChartThemes.getDefaultTheme().typography.fontFamily}`;
+		const dateStr = new Date().toLocaleDateString('ru-RU', {
+			day: 'numeric',
+			month: 'long',
+			year: 'numeric'
+		});
+		ctx.fillText(`Сгенерировано: ${dateStr}`, width / 2, yOffset + (50 * scale));
+	}
+
+	/**
+	 * Добавление легенды к экспорту
+	 */
+	addLegendToExport(ctx, chart, width, scale, yOffset) {
+		const legend = chart.legend;
+		if (!legend || !legend.legendItems || legend.legendItems.length === 0) return;
+		
+		const itemsPerRow = Math.min(legend.legendItems.length, 4);
+		const itemWidth = width / itemsPerRow;
+		const itemHeight = 30 * scale;
+		
+		legend.legendItems.forEach((item, index) => {
+			const row = Math.floor(index / itemsPerRow);
+			const col = index % itemsPerRow;
+			
+			const x = col * itemWidth + (20 * scale);
+			const y = yOffset + (row * itemHeight);
+			
+			// Цветной квадрат
+			ctx.fillStyle = item.fillStyle;
+			ctx.fillRect(x, y, 20 * scale, 20 * scale);
+			
+			// Текст
+			ctx.fillStyle = '#333';
+			ctx.font = `${12 * scale}px ${ChartThemes.getDefaultTheme().typography.fontFamily}`;
+			ctx.textAlign = 'left';
+			ctx.fillText(item.text, x + (30 * scale), y + (15 * scale));
+		});
+	}
+
+	/**
+	 * Добавление подвала к экспорту
+	 */
+	addFooterToExport(ctx, width, height, scale) {
+		ctx.fillStyle = '#999';
+		ctx.font = `${10 * scale}px ${ChartThemes.getDefaultTheme().typography.fontFamily}`;
+		ctx.textAlign = 'right';
+		ctx.fillText('Shopping Tracker © ' + new Date().getFullYear(), width - (20 * scale), height - (10 * scale));
+	}
+
+	/**
+	 * Генерация имени файла
+	 */
+	generateExportFilename(canvasId) {
+		const chartType = currentChartType || 'chart';
+		const viewType = currentViewType || 'bar';
+		const date = new Date();
+		const timestamp = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}_${date.getHours().toString().padStart(2,'0')}-${date.getMinutes().toString().padStart(2,'0')}`;
+		
+		return `shopping_chart_${chartType}_${viewType}_${canvasId}_${timestamp}.png`;
+	}
+
+	/**
+	 * Скачивание canvas как PNG
+	 */
+	downloadCanvasAsPNG(canvas, filename, quality = 1.0) {
+		return new Promise((resolve, reject) => {
+			try {
+				canvas.toBlob(blob => {
+					const url = URL.createObjectURL(blob);
+					const link = document.createElement('a');
+					link.download = filename;
+					link.href = url;
+					
+					// Триггер скачивания
+					document.body.appendChild(link);
+					link.click();
+					document.body.removeChild(link);
+					
+					// Очистка
+					setTimeout(() => URL.revokeObjectURL(url), 100);
+					
+					resolve(filename);
+					
+					// Показываем уведомление
+					this.showExportNotification(filename);
+				}, 'image/png', quality);
+			} catch (error) {
+				console.error('Ошибка экспорта:', error);
+				reject(error);
+			}
+		});
+	}
+
+	/**
+	 * Экспорт обоих графиков как коллаж
+	 */
+	exportBothChartsAsCollage(options = {}) {
+		const leftCanvas = document.getElementById('left-chart');
+		const rightCanvas = document.getElementById('right-chart');
+		
+		if (!leftCanvas || !rightCanvas) {
+			console.error('Не найдены оба canvas');
+			return;
+		}
+		
+		const leftChart = leftCanvas.chartInstance;
+		const rightChart = rightCanvas.chartInstance;
+		
+		if (!leftChart || !rightChart) {
+			console.error('Не найдены оба графика');
+			return;
+		}
+		
+		// Размеры
+		const scale = 1.5;
+		const padding = 30 * scale;
+		const chartWidth = Math.max(leftCanvas.width, rightCanvas.width) * scale;
+		const chartHeight = Math.max(leftCanvas.height, rightCanvas.height) * scale;
+		
+		// Создаем canvas для коллажа
+		const collageCanvas = document.createElement('canvas');
+		collageCanvas.width = (chartWidth * 2) + (padding * 3);
+		collageCanvas.height = chartHeight + (padding * 2) + (80 * scale); // + заголовок
+		
+		const ctx = collageCanvas.getContext('2d');
+		
+		// Фон
+		ctx.fillStyle = options.backgroundColor || 'white';
+		ctx.fillRect(0, 0, collageCanvas.width, collageCanvas.height);
+		
+		// Заголовок коллажа
+		const title = `Сравнительный анализ: ${this.getChartTypeName(currentChartType)}`;
+		ctx.fillStyle = '#333';
+		ctx.font = `${28 * scale}px ${ChartThemes.getDefaultTheme().typography.fontFamily}`;
+		ctx.textAlign = 'center';
+		ctx.fillText(title, collageCanvas.width / 2, padding + (40 * scale));
+		
+		// Левый график
+		ctx.drawImage(
+			leftCanvas,
+			0, 0, leftCanvas.width, leftCanvas.height,
+			padding, padding + (80 * scale), chartWidth, chartHeight
+		);
+		
+		// Правый график
+		ctx.drawImage(
+			rightCanvas,
+			0, 0, rightCanvas.width, rightCanvas.height,
+			padding * 2 + chartWidth, padding + (80 * scale), chartWidth, chartHeight
+		);
+		
+		// Подписи под графиками
+		ctx.fillStyle = '#666';
+		ctx.font = `${16 * scale}px ${ChartThemes.getDefaultTheme().typography.fontFamily}`;
+		ctx.textAlign = 'center';
+		
+		const leftTitle = document.querySelector('#left-chart-title')?.textContent || 'Левый график';
+		const rightTitle = document.querySelector('#right-chart-title')?.textContent || 'Правый график';
+		
+		ctx.fillText(leftTitle, padding + (chartWidth / 2), padding + (80 * scale) + chartHeight + (30 * scale));
+		ctx.fillText(rightTitle, padding * 2 + chartWidth + (chartWidth / 2), padding + (80 * scale) + chartHeight + (30 * scale));
+		
+		// Подвал
+		this.addFooterToExport(ctx, collageCanvas.width, collageCanvas.height, scale);
+		
+		// Экспортируем
+		const filename = `shopping_collage_${currentChartType}_${new Date().toISOString().slice(0,10)}.png`;
+		return this.downloadCanvasAsPNG(collageCanvas, filename, options.quality || 1.0);
+	}
+
+	/**
+	 * Получение читаемого имени типа графика
+	 */
+	getChartTypeName(type) {
+		const names = {
+			'categories': 'по категориям',
+			'months': 'по месяцам',
+			'years': 'по годам',
+			'stores': 'по магазинам',
+			'products': 'по товарам'
+		};
+		
+		return names[type] || type;
+	}
+
+	/**
+	 * Уведомление об успешном экспорте
+	 */
+	showExportNotification(filename) {
+		const notification = document.createElement('div');
+		notification.className = 'export-notification';
+		notification.innerHTML = `
+			<div class="notification-content">
+				<strong>✅ График экспортирован</strong>
+				<div>Файл: <code>${filename}</code></div>
+				<small>Проверьте папку "Загрузки"</small>
+			</div>
+		`;
+		
+		notification.style.cssText = `
+			position: fixed;
+			bottom: 20px;
+			right: 20px;
+			background: #27ae60;
+			color: white;
+			padding: 15px;
+			border-radius: 8px;
+			box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+			z-index: 1000;
+			animation: slideUp 0.3s ease-out;
+			max-width: 300px;
+		`;
+		
+		// Анимация
+		const style = document.createElement('style');
+		style.textContent = `
+			@keyframes slideUp {
+				from { transform: translateY(100%); opacity: 0; }
+				to { transform: translateY(0); opacity: 1; }
+			}
+			@keyframes slideDown {
+				from { transform: translateY(0); opacity: 1; }
+				to { transform: translateY(100%); opacity: 0; }
+			}
+		`;
+		document.head.appendChild(style);
+		
+		document.body.appendChild(notification);
+		
+		// Автоудаление через 5 секунд
+		setTimeout(() => {
+			notification.style.animation = 'slideDown 0.3s ease-out';
+			setTimeout(() => {
+				if (notification.parentNode) {
+					notification.parentNode.removeChild(notification);
+				}
+			}, 300);
+		}, 5000);
+	}
     
     /**
      * Получение графика по ID

@@ -1013,6 +1013,177 @@ class ShoppingApp {
 	
 }
 
+// ============================================
+// ИНТЕРАКТИВНОСТЬ
+// ============================================
+/**
+* Выбор фильтра
+*/
+function applyChartFilter() {
+    try {
+        const filterJson = localStorage.getItem('shoppingTracker_chartFilter');
+        const timestamp = localStorage.getItem('shoppingTracker_filterTimestamp');
+        
+        if (!filterJson || !timestamp) return;
+        
+        // Проверяем, не устарел ли фильтр (больше 30 минут)
+        const filterAge = Date.now() - parseInt(timestamp);
+        if (filterAge > 30 * 60 * 1000) {
+            console.log('Фильтр устарел, очищаем');
+            clearChartFilter();
+            return;
+        }
+        
+        const filter = JSON.parse(filterJson);
+        console.log('Применение фильтра из графика:', filter);
+        
+        // Применяем фильтр в зависимости от типа
+        applyFilterToTable(filter);
+        
+        // Показываем уведомление о примененном фильтре
+        showAppliedFilterNotification(filter);
+        
+    } catch (error) {
+        console.error('Ошибка применения фильтра:', error);
+    }
+}
+
+/**
+* Формирование таблицы при выборе фильтра
+*/
+function applyFilterToTable(filter) {
+    if (!window.purchasesTable) {
+        console.warn('Таблица не загружена, не могу применить фильтр');
+        return;
+    }
+    
+    let filterConfig = [];
+    
+    switch(filter.type) {
+        case 'categories':
+            // Фильтр по категории
+            filterConfig.push({
+                field: "category_name",
+                type: "like",
+                value: filter.label
+            });
+            break;
+            
+        case 'stores':
+            // Фильтр по магазину
+            if (filter.cleanLabel) {
+                filterConfig.push({
+                    field: "store.shop",
+                    type: "like",
+                    value: filter.cleanLabel
+                });
+            }
+            break;
+            
+        case 'months':
+            // Фильтр по месяцу
+            if (filter.monthNumber) {
+                filterConfig.push({
+                    field: "date",
+                    type: "function",
+                    value: function(cellValue) {
+                        if (!cellValue) return false;
+                        const date = new Date(cellValue);
+                        return (date.getMonth() + 1) === filter.monthNumber;
+                    }
+                });
+            }
+            break;
+            
+        case 'years':
+            // Фильтр по году
+            if (filter.year) {
+                filterConfig.push({
+                    field: "date",
+                    type: "function",
+                    value: function(cellValue) {
+                        if (!cellValue) return false;
+                        const date = new Date(cellValue);
+                        return date.getFullYear() === filter.year;
+                    }
+                });
+            }
+            break;
+            
+        case 'products':
+            // Фильтр по товару
+            if (filter.cleanLabel) {
+                filterConfig.push({
+                    field: "name",
+                    type: "like",
+                    value: filter.cleanLabel
+                });
+            }
+            break;
+    }
+    
+    // Применяем фильтр к таблице
+    if (filterConfig.length > 0) {
+        window.purchasesTable.setFilter(filterConfig);
+        
+        // Показываем количество отфильтрованных записей
+        const filteredCount = window.purchasesTable.getData("active").length;
+        console.log(`Применен фильтр: ${filter.label}, найдено: ${filteredCount} записей`);
+    }
+}
+
+/**
+* Создаём баннер фильтра
+*/
+function showAppliedFilterNotification(filter) {
+    // Создаем баннер фильтра
+    const filterBanner = document.createElement('div');
+    filterBanner.id = 'applied-filter-banner';
+    filterBanner.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span>Применен фильтр: <strong>${filter.label}</strong></span>
+            <button id="clear-applied-filter" class="btn-small btn-secondary">× Очистить</button>
+        </div>
+    `;
+    
+    filterBanner.style.cssText = `
+        background: #e3f2fd;
+        border: 1px solid #2196f3;
+        border-radius: 4px;
+        padding: 10px 15px;
+        margin: 10px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    `;
+    
+    // Вставляем перед таблицей
+    const tableContainer = document.querySelector('.table-container');
+    if (tableContainer) {
+        tableContainer.insertBefore(filterBanner, tableContainer.firstChild);
+    }
+    
+    // Обработчик очистки
+    document.getElementById('clear-applied-filter').addEventListener('click', function() {
+        clearChartFilter();
+        if (window.purchasesTable) {
+            window.purchasesTable.clearFilter();
+        }
+        filterBanner.remove();
+    });
+}
+
+/**
+* Очистка фильтра
+*/
+function clearChartFilter() {
+    localStorage.removeItem('shoppingTracker_chartFilter');
+    localStorage.removeItem('shoppingTracker_filterTimestamp');
+    console.log('Фильтр очищен');
+}
+
+
+
 // ЗАПУСК ПРИЛОЖЕНИЯ
 document.addEventListener('DOMContentLoaded', () => {
     // Проверяем, что apiClient загружен
@@ -1024,6 +1195,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return;
     }
+	// Ждем загрузки таблицы
+    setTimeout(() => {
+        applyChartFilter();
+    }, 1000);
     
     // Создаем и инициализируем приложение
     window.shoppingApp = new ShoppingApp();

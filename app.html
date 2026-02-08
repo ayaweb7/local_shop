@@ -47,8 +47,11 @@
 					<option value="">Все магазины</option>
 				</select>
 			</div>
-			<button id="apply-filters" class="btn-secondary">Применить</button>
-			<button id="reset-filters" class="btn-secondary">Сбросить</button>
+			<div>
+				<button id="apply-filters" class="btn-secondary">Применить</button>
+				<button id="reset-filters" class="btn-secondary">Сбросить</button>
+				<button id="clear-all-filters" class="btn-secondary" title="Очистить все фильтры">🗑️ Сбросить интерактивность</button>
+			</div>
 		</div>
 		
 		<!-- После панели фильтров -->
@@ -96,9 +99,59 @@
   <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="js/api.js"></script>
-  <script src="js/filters_test.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/filters_test.js"></script>
   <script src="js/stats.js"></script>
+  <script>
+	document.getElementById('clear-all-filters').addEventListener('click', function() {
+		if (window.purchasesTable) {
+			window.purchasesTable.clearFilter();
+		}
+		clearChartFilter();
+		
+		// Удаляем баннер фильтра если есть
+		const banner = document.getElementById('applied-filter-banner');
+		if (banner) banner.remove();
+		
+		// Показываем сообщение
+		showToast('Все фильтры очищены');
+	});
+
+	function showToast(message) {
+		const toast = document.createElement('div');
+		toast.textContent = message;
+		toast.style.cssText = `
+			position: fixed;
+			bottom: 20px;
+			right: 20px;
+			background: #27ae60;
+			color: white;
+			padding: 10px 20px;
+			border-radius: 4px;
+			z-index: 1000;
+			animation: fadeInOut 3s ease-in-out;
+		`;
+		
+		const style = document.createElement('style');
+		style.textContent = `
+			@keyframes fadeInOut {
+				0% { opacity: 0; transform: translateY(20px); }
+				10% { opacity: 1; transform: translateY(0); }
+				90% { opacity: 1; transform: translateY(0); }
+				100% { opacity: 0; transform: translateY(20px); }
+			}
+		`;
+		document.head.appendChild(style);
+		
+		document.body.appendChild(toast);
+		
+		setTimeout(() => {
+			if (toast.parentNode) {
+				toast.parentNode.removeChild(toast);
+			}
+		}, 3000);
+	}
+  </script>
   
   <!-- Форма для добавления / редактирования покупок -->
 <div id="purchase-modal" class="modal">

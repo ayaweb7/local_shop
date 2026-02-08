@@ -6,6 +6,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 	<!-- <script src="js/chart.min.js"></script> -->
     <script src="js/api.js"></script><!--  -->
+	<!-- Chart.js DataLabels плагин -->
+	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script><!--  -->
 	<script src="js/charts.js"></script>
 	
 </head>
@@ -92,6 +94,37 @@
 			</div>
 		</div>
 		
+		<!-- Кнопки экспорта графиков -->
+		<div class="chart-view-selector">
+			<h3>Экспорт графиков в формате PNG:</h3>
+			<div class="export-controls">
+				<button id="export-left" class="btn-export" title="Экспорт левого графика">
+					📥 Левый
+				</button>
+				<button id="export-right" class="btn-export" title="Экспорт правого графика">
+					📥 Правый
+				</button>
+				<button id="export-both" class="btn-export btn-primary" title="Экспорт обоих графиков">
+					📥📥 Два графика
+				</button>
+				<button id="export-all" class="btn-export btn-secondary" title="Экспорт всех графиков как коллаж">
+					🖼️ Коллаж
+				</button>
+			</div>
+		</div>
+		
+		<!-- Переключатель подписей -->
+		<div class="chart-options">
+			<label class="checkbox-label">
+				<input type="checkbox" id="show-data-labels" checked>
+				Показывать подписи данных
+			</label>
+			<label class="checkbox-label">
+				<input type="checkbox" id="show-percentages">
+				Показывать проценты (для круговых)
+			</label>
+		</div>
+		
 		<!-- Пара графиков -->
 		<div class="charts-pair">
 			<div class="chart-container">
@@ -114,6 +147,8 @@
 		let currentYear = null;
 		let currentMonth = null;
 		let currentViewType = 'horizontalBar';
+		let showDataLabels = true;
+		let showPercentages = false;
 		
 		document.addEventListener('DOMContentLoaded', async () => {
 			console.log('Charts page initialized');
@@ -134,6 +169,10 @@
 			// Обработчики переключения типов графиков
 			setupChartTypeButtons();
 			setupViewTypeButtons();
+			
+			// Обработчики экспорта
+			setupExportControls();
+			setupChartOptions(); // Для чекбоксов
 		});
 		
 		async function loadData() {
@@ -330,6 +369,7 @@
 				{
 					limit: 25, // Показываем топ-25 категорий
 					type: currentViewType // Используем выбранный тип
+					// dataType: 'categories' Важно для фильтрации!
 				}
 			);
 		}
@@ -343,6 +383,7 @@
 				window.chartData.months,
 				{
 					type: currentViewType // Используем выбранный тип
+					// dataType: 'months' Важно для фильтрации!
 				}
 			);
 		}
@@ -356,6 +397,7 @@
 				window.chartData.years,
 				{
 					type: currentViewType // Используем выбранный тип
+					// dataType: 'years' Важно для фильтрации!
 				}
 			);
 		}
@@ -376,8 +418,9 @@
 				purchases,
 				window.chartData.stores,
 				{
-					limit: 10, // ТОП-10 магазинов
-					type: currentViewType // Используем выбранный тип
+					type: currentViewType, // Используем выбранный тип
+					// dataType: 'stores', Важно для фильтрации!
+					limit: 10 // ТОП-10 магазинов
 				}
 			);
 		}
@@ -390,8 +433,9 @@
 				purchases,
 				window.chartData.products,
 				{
-					limit: 10, // ТОП-10 товаров
-					type: currentViewType // Используем выбранный тип
+					type: currentViewType, // Используем выбранный тип
+					// dataType: 'products', Важно для фильтрации!
+					limit: 10 // ТОП-10 товаров
 				}
 			);
 		}
@@ -413,6 +457,100 @@
 					
 					// Обновляем графики
 					updateCharts();
+				});
+			});
+		}
+		
+		// Функции подписей данных на графиках
+		function setupChartOptions() {
+			const labelsCheckbox = document.getElementById('show-data-labels');
+			const percentagesCheckbox = document.getElementById('show-percentages');
+			
+			labelsCheckbox.addEventListener('change', function() {
+				showDataLabels = this.checked;
+				updateDataLabels();
+			});
+			
+			percentagesCheckbox.addEventListener('change', function() {
+				showPercentages = this.checked;
+				updateDataLabels();
+			});
+		}
+
+		function updateDataLabels() {
+			// Обновляем все активные графики
+			chartManager.updateAllChartsDataLabels();
+		}
+
+		// Добавляем в ChartManager метод для обновления подписей
+		ChartManager.prototype.updateAllChartsDataLabels = function() {
+			this.charts.forEach((chart, canvasId) => {
+				this.updateChartDataLabels(canvasId);
+			});
+			
+			this.chartPairs.forEach((pair, key) => {
+				if (pair.leftChart) {
+					this.updateChartDataLabels(pair.leftCanvasId);
+				}
+				if (pair.rightChart) {
+					this.updateChartDataLabels(pair.rightCanvasId);
+				}
+			});
+		};
+
+		ChartManager.prototype.updateChartDataLabels = function(canvasId) {
+			const chart = this.getChart(canvasId);
+			if (!chart || !chart.config || !chart.config.options.plugins) return;
+			
+			const datalabels = chart.config.options.plugins.datalabels;
+			if (!datalabels) return;
+			
+			// Обновляем видимость
+			datalabels.display = showDataLabels;
+			
+			// Обновляем форматтер для круговых диаграмм
+			if (chart.config.type === 'pie' || chart.config.type === 'doughnut') {
+				datalabels.formatter = (value, context) => {
+					if (showPercentages) {
+						const total = context.dataset.data.reduce((a, b) => a + b, 0);
+						const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+						return `${ChartUtils.formatCurrency(value, '', 0)}\n(${percentage}%)`;
+					}
+					return ChartUtils.formatCurrency(value, '', 0);
+				};
+			}
+			
+			// Обновляем график
+			chart.update();
+		};
+		
+		// Обработчики экспорта
+		function setupExportControls() {
+			document.getElementById('export-left').addEventListener('click', () => {
+				chartManager.exportChartToPNG('left-chart', {
+					includeTitle: true,
+					includeLegend: true
+				});
+			});
+			
+			document.getElementById('export-right').addEventListener('click', () => {
+				chartManager.exportChartToPNG('right-chart', {
+					includeTitle: true,
+					includeLegend: true
+				});
+			});
+			
+			document.getElementById('export-both').addEventListener('click', () => {
+				chartManager.exportChartToPNG('left-chart');
+				setTimeout(() => {
+					chartManager.exportChartToPNG('right-chart');
+				}, 500);
+			});
+			
+			document.getElementById('export-all').addEventListener('click', () => {
+				chartManager.exportBothChartsAsCollage({
+					quality: 1.0,
+					backgroundColor: 'white'
 				});
 			});
 		}
