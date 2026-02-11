@@ -60,6 +60,64 @@
         <button id="apply-filters" class="btn-primary">Применить</button>
         <button id="reset-filters" class="btn-secondary">Сбросить</button>
     </div>
+	
+	<!-- Выбор периодов для сравнения -->
+	<div class="comparison-controls" id="comparison-controls" style="display: none;">
+		<h3>Настройка сравнения периодов</h3>
+		
+		<div class="comparison-settings">
+			<div class="setting-group">
+				<label>Тип сравнения:</label>
+				<select id="comparison-type">
+					<option value="year">Год vs Год</option>
+					<option value="quarter">Квартал vs Квартал</option>
+					<option value="month" disabled>Месяц vs Месяц (скоро)</option>
+				</select>
+			</div>
+			
+			<div class="periods-selector">
+				<div class="period-select">
+					<label>Первый период:</label>
+					<select id="period1-year">
+						<!-- Заполнится динамически -->
+					</select>
+					<select id="period1-quarter" style="display: none;">
+						<option value="1">1 квартал (Янв-Мар)</option>
+						<option value="2">2 квартал (Апр-Июн)</option>
+						<option value="3">3 квартал (Июл-Сен)</option>
+						<option value="4">4 квартал (Окт-Дек)</option>
+					</select>
+				</div>
+				
+				<div class="vs-text">vs</div>
+				
+				<div class="period-select">
+					<label>Второй период:</label>
+					<select id="period2-year">
+						<!-- Заполнится динамически -->
+					</select>
+					<select id="period2-quarter" style="display: none;">
+						<option value="1">1 квартал (Янв-Мар)</option>
+						<option value="2">2 квартал (Апр-Июн)</option>
+						<option value="3">3 квартал (Июл-Сен)</option>
+						<option value="4">4 квартал (Окт-Дек)</option>
+					</select>
+				</div>
+			</div>
+			
+			<div class="comparison-actions">
+				<button id="apply-comparison" class="btn-primary">
+					🔄 Применить сравнение
+				</button>
+				<button id="swap-periods" class="btn-secondary" title="Поменять периоды местами">
+					↔️ Поменять местами
+				</button>
+			</div>
+		</div>
+		
+		<!-- Статистика сравнения -->
+		<div class="comparison-stats"></div>
+	</div>
     
     <!-- Дашборд графиков -->
     <div class="dashboard">
@@ -72,6 +130,8 @@
 				<button class="chart-type-btn" data-type="years">📈 По годам</button>
 				<button class="chart-type-btn" data-type="stores">🏪 По магазинам</button>
 				<button class="chart-type-btn" data-type="products">🛒 По товарам</button>
+				<!-- Кнопка периодов сравнения -->
+				<button class="chart-type-btn" data-type="comparison">🥓 Сравнение периодов</button>
 			</div>
 		</div>
 		
@@ -99,21 +159,21 @@
 			<h3>Экспорт графиков в формате PNG:</h3>
 			<div class="export-controls">
 				<button id="export-left" class="btn-export" title="Экспорт левого графика">
-					📥 Левый
+					⏪ Левый
 				</button>
 				<button id="export-right" class="btn-export" title="Экспорт правого графика">
-					📥 Правый
+					⏩ Правый
 				</button>
 				<button id="export-both" class="btn-export btn-primary" title="Экспорт обоих графиков">
-					📥📥 Два графика
+					⏪ ⏩ Два графика
 				</button>
 				<button id="export-all" class="btn-export btn-secondary" title="Экспорт всех графиков как коллаж">
-					🖼️ Коллаж
+					🗺️ Коллаж
 				</button>
 			</div>
 		</div>
 		
-		<!-- Переключатель подписей -->
+		<!-- Переключатель подписей/процентов -->
 		<div class="chart-options">
 			<label class="checkbox-label">
 				<input type="checkbox" id="show-data-labels" checked>
@@ -149,6 +209,13 @@
 		let currentViewType = 'horizontalBar';
 		let showDataLabels = true;
 		let showPercentages = false;
+		let comparisonSettings = {
+			type: 'year',
+			year1: null,
+			year2: null,
+			quarter1: null,
+			quarter2: null
+		};
 		
 		document.addEventListener('DOMContentLoaded', async () => {
 			console.log('Charts page initialized');
@@ -173,6 +240,9 @@
 			// Обработчики экспорта
 			setupExportControls();
 			setupChartOptions(); // Для чекбоксов
+			
+			// Обработчик сравнения
+			setupComparisonControls();
 		});
 		
 		async function loadData() {
@@ -554,6 +624,236 @@
 				});
 			});
 		}
+		
+		// ФУНКЦИИ для работы со сравнением:
+		function setupComparisonControls() {
+			const comparisonTypeSelect = document.getElementById('comparison-type');
+			const period1YearSelect = document.getElementById('period1-year');
+			const period2YearSelect = document.getElementById('period2-year');
+			const period1QuarterSelect = document.getElementById('period1-quarter');
+			const period2QuarterSelect = document.getElementById('period2-quarter');
+			const applyBtn = document.getElementById('apply-comparison');
+			const swapBtn = document.getElementById('swap-periods');
+			
+			// Заполняем списки годов
+			function populateYearSelects() {
+				if (!window.chartData || !window.chartData.purchases) return;
+				
+				const years = unifiedProcessor.getAvailableYearsForComparison(window.chartData.purchases);
+				
+				period1YearSelect.innerHTML = years.map(year => 
+					`<option value="${year}">${year} год</option>`
+				).join('');
+				
+				period2YearSelect.innerHTML = years.map(year => 
+					`<option value="${year}">${year} год</option>`
+				).join('');
+				
+				// Устанавливаем текущий и прошлый год по умолчанию
+				if (years.length >= 2) {
+					// Автоматически выбираем последние два года с данными
+					period1YearSelect.value = years[0];
+					period2YearSelect.value = years[1];
+					
+					comparisonSettings.year1 = parseInt(years[0]);
+					comparisonSettings.year2 = parseInt(years[1]);
+					
+					console.log(`Автовыбор периодов: ${years[0]} vs ${years[1]}`);
+				}
+			}
+			
+			// Обработчик изменения типа сравнения
+			comparisonTypeSelect.addEventListener('change', function() {
+				const type = this.value;
+				comparisonSettings.type = type;
+				
+				// Показываем/скрываем квартальные селекторы
+				const showQuarterSelects = type === 'quarter';
+				period1QuarterSelect.style.display = showQuarterSelects ? 'block' : 'none';
+				period2QuarterSelect.style.display = showQuarterSelects ? 'block' : 'none';
+			});
+			
+			// Обработчики изменения периодов
+			period1YearSelect.addEventListener('change', function() {
+				comparisonSettings.year1 = parseInt(this.value);
+			});
+			
+			period2YearSelect.addEventListener('change', function() {
+				comparisonSettings.year2 = parseInt(this.value);
+			});
+			
+			period1QuarterSelect.addEventListener('change', function() {
+				comparisonSettings.quarter1 = parseInt(this.value);
+			});
+			
+			period2QuarterSelect.addEventListener('change', function() {
+				comparisonSettings.quarter2 = parseInt(this.value);
+			});
+			
+			// Кнопка применения сравнения
+			applyBtn.addEventListener('click', function() {
+				if (!comparisonSettings.year1 || !comparisonSettings.year2) {
+					alert('Выберите оба периода для сравнения');
+					return;
+				}
+				
+				if (comparisonSettings.year1 === comparisonSettings.year2) {
+					alert('Выберите разные периоды для сравнения');
+					return;
+				}
+				
+				updateCharts();
+			});
+			
+			// Кнопка смены периодов местами
+			swapBtn.addEventListener('click', function() {
+				const tempYear = comparisonSettings.year1;
+				comparisonSettings.year1 = comparisonSettings.year2;
+				comparisonSettings.year2 = tempYear;
+				
+				const tempQuarter = comparisonSettings.quarter1;
+				comparisonSettings.quarter1 = comparisonSettings.quarter2;
+				comparisonSettings.quarter2 = tempQuarter;
+				
+				// Обновляем селекты
+				period1YearSelect.value = comparisonSettings.year1;
+				period2YearSelect.value = comparisonSettings.year2;
+				
+				if (comparisonSettings.type === 'quarter') {
+					period1QuarterSelect.value = comparisonSettings.quarter1;
+					period2QuarterSelect.value = comparisonSettings.quarter2;
+				}
+				
+				updateCharts();
+			});
+			
+			// Заполняем списки при загрузке данных
+			setTimeout(populateYearSelects, 1000);
+		}
+
+		// Обновляем функцию updateCharts для поддержки сравнения:
+		function updateCharts() {
+			console.log(`Обновление графиков: тип=${currentChartType}, фильтр=${currentFilter}`);
+			
+			if (!window.chartData || !window.chartData.purchases) {
+				console.warn('Нет данных для графиков');
+				return;
+			}
+			
+			// Уничтожаем старую пару графиков
+			chartManager.destroyChartPair('left-chart', 'right-chart');
+			
+			// Фильтруем данные (для обычных графиков)
+			let filteredPurchases = [...window.chartData.purchases];
+			
+			if (currentFilter === 'year') {
+				const yearSelect = document.getElementById('year-filter');
+				currentYear = yearSelect.value;
+				if (currentYear) {
+					filteredPurchases = unifiedProcessor.filterByYear(filteredPurchases, currentYear);
+				}
+			} else if (currentFilter === 'month') {
+				const yearSelect = document.getElementById('year-filter');
+				const monthSelect = document.getElementById('month-filter');
+				currentYear = yearSelect.value;
+				currentMonth = monthSelect.value;
+				if (currentYear && currentMonth) {
+					filteredPurchases = unifiedProcessor.filterByYearMonth(
+						filteredPurchases, 
+						currentYear, 
+						currentMonth
+					);
+				}
+			}
+			
+			// Показываем/скрываем панель сравнения
+			const comparisonControls = document.getElementById('comparison-controls');
+			if (currentChartType === 'comparison') {
+				comparisonControls.style.display = 'block';
+			} else {
+				comparisonControls.style.display = 'none';
+			}
+			
+			// Создаем графики в зависимости от типа
+			switch(currentChartType) {
+				case 'categories':
+					createCategoryCharts(filteredPurchases);
+					break;
+				case 'months':
+					createMonthlyCharts(filteredPurchases);
+					break;
+				case 'years':
+					createYearlyCharts(filteredPurchases);
+					break;
+				case 'stores':
+					createStoreCharts(filteredPurchases);
+					break;
+				case 'products':
+					createProductCharts(filteredPurchases);
+					break;
+				case 'comparison':
+					createComparisonCharts(window.chartData.purchases); // Используем все данные для сравнения
+					break;
+			}
+		}
+
+		// Новая функция для создания графиков сравнения:
+		function createComparisonCharts(purchases) {
+			console.log('Создание графиков сравнения периодов', comparisonSettings);
+			
+			if (!comparisonSettings.year1 || !comparisonSettings.year2) {
+				console.warn('Не выбраны периоды для сравнения');
+				return;
+			}
+			
+			chartManager.createComparisonPair(
+				{ left: 'left-chart', right: 'right-chart' },
+				purchases,
+				{
+					type: currentViewType === 'pie' ? 'line' : currentViewType, // Круговые не подходят для сравнения
+					year1: comparisonSettings.year1,
+					year2: comparisonSettings.year2,
+					quarter1: comparisonSettings.quarter1,
+					quarter2: comparisonSettings.quarter2,
+					comparisonType: comparisonSettings.type
+				}
+			);
+		}
+		
+		// Валидация выбранных периодов:
+		function validateComparisonSettings() {
+			if (comparisonSettings.year1 === comparisonSettings.year2) {
+				return {
+					valid: false,
+					message: 'Выберите разные годы для сравнения'
+				};
+			}
+			
+			// Проверяем, есть ли данные для выбранных годов
+			const year1Data = window.chartData.purchases.filter(p => 
+				new Date(p.date).getFullYear() === comparisonSettings.year1
+			);
+			const year2Data = window.chartData.purchases.filter(p => 
+				new Date(p.date).getFullYear() === comparisonSettings.year2
+			);
+			
+			if (year1Data.length === 0) {
+				return {
+					valid: false,
+					message: `Нет данных за ${comparisonSettings.year1} год`
+				};
+			}
+			
+			if (year2Data.length === 0) {
+				return {
+					valid: false,
+					message: `Нет данных за ${comparisonSettings.year2} год`
+				};
+			}
+			
+			return { valid: true };
+		}
+		
 	</script>
 
 </body>

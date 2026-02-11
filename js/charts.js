@@ -1879,6 +1879,77 @@ class ChartManager {
     getChart(canvasId) {
         return this.charts.get(canvasId);
     }
+	
+	/**
+     * Создание пары графиков сравнения периодов
+     */
+    createComparisonPair(canvasIds, purchases, options = {}) {
+        console.log('Создание графиков сравнения периодов');
+        
+        // Обрабатываем данные через UnifiedDataProcessor
+        const processedData = this.unifiedProcessor.comparePeriods(purchases, options);
+        
+        // Создаем пару графиков
+        const pair = new ChartPair(
+            canvasIds.left || 'left-chart',
+            canvasIds.right || 'right-chart',
+            {
+                type: options.type || 'line',
+                leftTitle: options.leftTitle || `Сравнение сумм: ${options.year1} vs ${options.year2}`,
+                rightTitle: options.rightTitle || `Сравнение количества: ${options.year1} vs ${options.year2}`,
+                showAmount: true,
+                showCount: true,
+                dataType: 'comparison'
+            }
+        );
+        
+        const charts = pair.create({
+            amountData: processedData.amountData,
+            countData: processedData.countData
+        });
+        
+        // Сохраняем пару
+        this.chartPairs.set(`${canvasIds.left}-${canvasIds.right}`, pair);
+        
+        // Добавляем статистику в заголовок
+        this.addComparisonStats(processedData.meta);
+        
+        return charts;
+    }
+    
+    /**
+     * Добавление статистики сравнения
+     */
+    addComparisonStats(meta) {
+        const container = document.querySelector('.comparison-stats');
+        if (!container) return;
+        
+        const changePercent = meta.period2Total > 0 ? 
+            ((meta.period1Total - meta.period2Total) / meta.period2Total * 100).toFixed(1) : 
+            0;
+        
+        const changeSymbol = meta.difference >= 0 ? '📈' : '📉';
+        const changeClass = meta.difference >= 0 ? 'positive' : 'negative';
+        
+        container.innerHTML = `
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-title">${meta.year1} год</div>
+                    <div class="stat-value">${ChartUtils.formatCurrency(meta.period1Total)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">${meta.year2} год</div>
+                    <div class="stat-value">${ChartUtils.formatCurrency(meta.period2Total)}</div>
+                </div>
+                <div class="stat-card ${changeClass}">
+                    <div class="stat-title">Изменение ${changeSymbol}</div>
+                    <div class="stat-value">${ChartUtils.formatCurrency(Math.abs(meta.difference))}</div>
+                    <div class="stat-percent">${changePercent}%</div>
+                </div>
+            </div>
+        `;
+    }
+
 }
 
 // ============================================
@@ -2385,6 +2456,219 @@ class UnifiedDataProcessor {
 				name: monthNames[month - 1]
 			}));
 	}
+	
+	/**
+     * Сравнение двух периодов (год vs год)
+     * Возвращает данные для обоих графиков: суммы и количества
+     */
+    comparePeriods(purchases, options = {}) {
+        console.log('Сравнение периодов', options);
+        
+        const year1 = options.year1 || new Date().getFullYear();
+        const year2 = options.year2 || year1 - 1;
+        const type = options.type || 'year'; // 'year', 'month', 'quarter'
+        
+        // Фильтруем данные по периодам
+        const period1Data = this.filterByPeriod(purchases, year1, type);
+        const period2Data = this.filterByPeriod(purchases, year2, type);
+        
+        // Агрегируем данные
+        const period1Amount = this._aggregateByTime(period1Data, type, 'amount');
+        const period2Amount = this._aggregateByTime(period2Data, type, 'amount');
+        
+        const period1Count = this._aggregateByTime(period1Data, type, 'count');
+        const period2Count = this._aggregateByTime(period2Data, type, 'count');
+        
+        // Подготавливаем метки в зависимости от типа периода
+        const labels = this.getPeriodLabels(type, year1);
+        
+        // Формируем данные для левого графика (суммы)
+        const amountData = {
+            labels: labels,
+            datasets: [
+                {
+                    label: `${year1} год`,
+                    data: labels.map((_, i) => period1Amount[i] || 0),
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4
+                },
+                {
+                    label: `${year2} год`,
+                    data: labels.map((_, i) => period2Amount[i] || 0),
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4,
+                    borderDash: [5, 5] // Пунктир для второго периода
+                }
+            ]
+        };
+        
+        // Формируем данные для правого графика (количества)
+        const countData = {
+            labels: labels,
+            datasets: [
+                {
+                    label: `${year1} год`,
+                    data: labels.map((_, i) => period1Count[i] || 0),
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.2)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4
+                },
+                {
+                    label: `${year2} год`,
+                    data: labels.map((_, i) => period2Count[i] || 0),
+                    borderColor: '#9b59b6',
+                    backgroundColor: 'rgba(155, 89, 182, 0.2)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4,
+                    borderDash: [5, 5]
+                }
+            ]
+        };
+        
+        console.log('Данные для сравнения подготовлены:', {
+            year1, year2, type,
+            labelsCount: labels.length,
+            amountDataPoints: amountData.datasets[0].data.length,
+            countDataPoints: countData.datasets[0].data.length
+        });
+        
+        return {
+            amountData: amountData,
+            countData: countData,
+            meta: {
+                year1: year1,
+                year2: year2,
+                type: type,
+                period1Total: period1Amount.reduce((a, b) => a + b, 0),
+                period2Total: period2Amount.reduce((a, b) => a + b, 0),
+                difference: period1Amount.reduce((a, b) => a + b, 0) - 
+                           period2Amount.reduce((a, b) => a + b, 0)
+            }
+        };
+    }
+    
+    /**
+     * Фильтрация данных по периоду
+     */
+    filterByPeriod(purchases, year, type = 'year') {
+        return purchases.filter(purchase => {
+            if (!purchase.date) return false;
+            const date = new Date(purchase.date);
+            
+            switch(type) {
+                case 'year':
+                    return date.getFullYear() === year;
+                case 'month':
+                    // Для месячного сравнения нужен месяц и год
+                    const targetMonth = Math.floor((date.getMonth() + 1) / 2) * 2; // Группировка по 2 месяца
+                    return date.getFullYear() === year;
+                case 'quarter':
+                    const quarter = Math.floor(date.getMonth() / 3) + 1;
+                    return date.getFullYear() === year;
+                default:
+                    return date.getFullYear() === year;
+            }
+        });
+    }
+    
+    /**
+     * Агрегация данных по времени
+     */
+    _aggregateByTime(purchases, type, mode = 'amount') {
+        const aggregation = {};
+        
+        purchases.forEach(purchase => {
+            const date = new Date(purchase.date);
+            let periodKey;
+            
+            switch(type) {
+                case 'year':
+                    // Агрегация по месяцам внутри года
+                    periodKey = date.getMonth(); // 0-11
+                    break;
+                case 'month':
+                    // По дням месяца (группировка по неделям)
+                    periodKey = Math.floor((date.getDate() - 1) / 7); // 0-3 недели
+                    break;
+                case 'quarter':
+                    // По месяцам внутри квартала
+                    const quarter = Math.floor(date.getMonth() / 3);
+                    periodKey = date.getMonth() - (quarter * 3); // 0-2 месяца в квартале
+                    break;
+                default:
+                    periodKey = date.getMonth();
+            }
+            
+            if (!aggregation[periodKey]) {
+                aggregation[periodKey] = {
+                    amount: 0,
+                    count: 0
+                };
+            }
+            
+            aggregation[periodKey].amount += parseFloat(purchase.amount) || 0;
+            aggregation[periodKey].count += 1;
+        });
+        
+        // Преобразуем в массив, заполняя пропуски
+        const maxPeriods = type === 'year' ? 12 : 
+                          type === 'month' ? 4 : 
+                          type === 'quarter' ? 3 : 12;
+        
+        const result = [];
+        for (let i = 0; i < maxPeriods; i++) {
+            result.push(aggregation[i] ? aggregation[i][mode] : 0);
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Получение меток для периода
+     */
+    getPeriodLabels(type, year) {
+        switch(type) {
+            case 'year':
+                const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 
+                                   'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+                return monthNames;
+                
+            case 'month':
+                return ['1-7', '8-14', '15-21', '22-31'];
+                
+            case 'quarter':
+                return ['Янв-Мар', 'Апр-Июн', 'Июл-Сен', 'Окт-Дек'];
+                
+            default:
+                return Array(12).fill().map((_, i) => `Период ${i + 1}`);
+        }
+    }
+    
+    /**
+     * Получение доступных годов для сравнения
+     */
+    getAvailableYearsForComparison(purchases) {
+        const years = new Set();
+        
+        purchases.forEach(purchase => {
+            if (purchase.date) {
+                const date = new Date(purchase.date);
+                years.add(date.getFullYear());
+            }
+        });
+        
+        return Array.from(years).sort((a, b) => b - a); // По убыванию
+    }
+
 }
 
 // ============================================
