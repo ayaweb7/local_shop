@@ -1949,6 +1949,498 @@ class ChartManager {
             </div>
         `;
     }
+	
+	/**
+	 * ТЕПЛОВЫЕ КАРТЫ
+     * Создание пары тепловых карт
+     */
+    createHeatmapPair(canvasIds, purchases, options = {}) {
+        console.log('Создание тепловых карт', options);
+        
+        // Обрабатываем данные через UnifiedDataProcessor
+        const processedData = this.unifiedProcessor.processHeatmapData(purchases, options);
+        
+        // Создаем уникальные ID для подграфиков
+        const amountCanvasId = canvasIds.left || 'left-chart';
+        const countCanvasId = canvasIds.right || 'right-chart';
+        
+        // Создаем левый график (суммы)
+        const amountChart = this.createHeatmap(
+            amountCanvasId,
+            processedData.amountData,
+            {
+                title: options.leftTitle || `Тепловая карта: ${processedData.meta.monthName} ${processedData.meta.year} (суммы)`,
+                type: 'heatmap',
+                maxValue: processedData.meta.maxAmount,
+                unit: '₽'
+            }
+        );
+        
+        // Создаем правый график (количество)
+        const countChart = this.createHeatmap(
+            countCanvasId,
+            processedData.countData,
+            {
+                title: options.rightTitle || `Тепловая карта: ${processedData.meta.monthName} ${processedData.meta.year} (количество)`,
+                type: 'heatmap',
+                maxValue: processedData.meta.maxCount,
+                unit: 'шт'
+            }
+        );
+        
+        // Сохраняем графики
+        if (amountChart) this.charts.set(amountCanvasId, amountChart);
+        if (countChart) this.charts.set(countCanvasId, countChart);
+        
+        // Добавляем статистику
+        this.addHeatmapStats(processedData.meta);
+        
+        return { amountChart, countChart };
+    }
+    
+    /**
+     * Создание одиночной тепловой карты
+     */
+    createHeatmap(canvasId, data, options = {}) {
+        try {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error(`Canvas ${canvasId} не найден`);
+                return null;
+            }
+            
+            // Уничтожаем старый график
+            this.destroyChart(canvasId);
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Создаем конфигурацию для тепловой карты
+            const config = {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y', // Горизонтальная группировка по неделям
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: options.title || 'Тепловая карта',
+                            font: { size: 16, weight: 'bold' },
+                            padding: 20
+                        },
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                generateLabels: function(chart) {
+                                    const datasets = chart.data.datasets;
+                                    return datasets.map((dataset, i) => ({
+                                        text: dataset.label,
+                                        fillStyle: dataset.backgroundColor[0] || '#ccc',
+                                        strokeStyle: dataset.borderColor,
+                                        hidden: false,
+                                        index: i
+                                    }));
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: (context) => {
+                                    const dataset = context[0].dataset;
+                                    const label = context[0].label;
+                                    return `${dataset.label}, ${label}`;
+                                },
+                                label: (context) => {
+                                    const value = context.raw;
+                                    const maxValue = options.maxValue || 100;
+                                    const intensity = maxValue > 0 ? Math.round((value / maxValue) * 100) : 0;
+                                    
+                                    if (options.unit === '₽') {
+                                        return [`Сумма: ${ChartUtils.formatCurrency(value)}`,
+                                                `Интенсивность: ${intensity}%`];
+                                    } else {
+                                        return [`Количество: ${ChartUtils.formatNumber(value, 0)} ${options.unit}`,
+                                                `Интенсивность: ${intensity}%`];
+                                    }
+                                }
+                            },
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            cornerRadius: 6
+                        },
+                        datalabels: {
+                            display: true,
+                            color: '#333',
+                            font: { size: 10, weight: 'bold' },
+                            formatter: (value) => {
+                                if (value === 0) return '';
+                                if (options.unit === '₽') {
+                                    return ChartUtils.formatCurrency(value, '', 0);
+                                }
+                                return ChartUtils.formatNumber(value, 0);
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { display: false },
+                            ticks: {
+                                callback: (value) => {
+                                    if (options.unit === '₽') {
+                                        return ChartUtils.formatCurrency(value, '', 0);
+                                    }
+                                    return ChartUtils.formatNumber(value, 0);
+                                }
+                            }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { autoSkip: false }
+                        }
+                    },
+                    layout: {
+                        padding: { top: 20, bottom: 20, left: 10, right: 20 }
+                    }
+                }
+            };
+            
+            const chart = new Chart(ctx, config);
+            
+            // Сохраняем в canvas
+            canvas.chartInstance = chart;
+            
+            console.log(`Тепловая карта создана: ${canvasId}`);
+            return chart;
+            
+        } catch (error) {
+            console.error(`Ошибка создания тепловой карты ${canvasId}:`, error);
+            return null;
+        }
+    }
+    
+    /**
+     * Добавление статистики тепловой карты
+     */
+    addHeatmapStats(meta) {
+        const container = document.querySelector('.heatmap-stats');
+        if (!container) return;
+        
+        container.innerHTML = `
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-title">Период</div>
+                    <div class="stat-value">${meta.monthName} ${meta.year}</div>
+                    <div class="stat-desc">${meta.weeksCount} недель</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Всего потрачено</div>
+                    <div class="stat-value">${ChartUtils.formatCurrency(meta.totalAmount)}</div>
+                    <div class="stat-desc">${meta.totalCount} покупок</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Максимум в день</div>
+                    <div class="stat-value">${ChartUtils.formatCurrency(meta.maxAmount)}</div>
+                    <div class="stat-desc">${meta.totalCount > 0 ? 
+                        `Средний чек: ${ChartUtils.formatCurrency(meta.totalAmount / meta.totalCount)}` : 
+                        'Нет данных'}</div>
+                </div>
+            </div>
+        `;
+    }
+	
+	/**
+	 * СОВМЕЩЁННЫЙ ГРАФИК
+     * Создание пары совмещенных графиков
+     */
+    createComboPair(canvasIds, purchases, options = {}) {
+        console.log('Создание совмещенных графиков', options);
+        
+        // Обрабатываем данные
+        const processedData = this.unifiedProcessor.processComboData(purchases, options);
+        
+        // Создаем левый график (сумма + количество)
+        const leftChart = this.createComboChart(
+            canvasIds.left || 'left-chart',
+            processedData.amountCountData,
+            {
+                title: options.leftTitle || `Сумма и количество покупок (${this._getPeriodName(options.period)})`,
+                leftAxisLabel: 'Сумма, ₽',
+                rightAxisLabel: 'Количество, шт',
+                colors: ['#3498db', '#e74c3c']
+            }
+        );
+        
+        // Создаем правый график (сумма + средний чек)
+        const rightChart = this.createComboChart(
+            canvasIds.right || 'right-chart',
+            processedData.amountAverageData,
+            {
+                title: options.rightTitle || `Сумма и средний чек (${this._getPeriodName(options.period)})`,
+                leftAxisLabel: 'Сумма, ₽',
+                rightAxisLabel: 'Средний чек, ₽',
+                colors: ['#2ecc71', '#f39c12']
+            }
+        );
+        
+        // Сохраняем графики
+        if (leftChart) {
+            this.charts.set(canvasIds.left || 'left-chart', leftChart);
+            this._makeChartInteractive(leftChart, canvasIds.left, 'combo', 'left');
+        }
+        
+        if (rightChart) {
+            this.charts.set(canvasIds.right || 'right-chart', rightChart);
+            this._makeChartInteractive(rightChart, canvasIds.right, 'combo', 'right');
+        }
+        
+        // Добавляем статистику
+        this.addComboStats(processedData.meta);
+        
+        return { leftChart, rightChart, meta: processedData.meta };
+    }
+    
+    /**
+     * Создание одиночного совмещенного графика
+     */
+    createComboChart(canvasId, data, options = {}) {
+        try {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error(`Canvas ${canvasId} не найден`);
+                return null;
+            }
+            
+            // Уничтожаем старый график
+            this.destroyChart(canvasId);
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Конфигурация для совмещенного графика
+            const config = {
+                type: 'bar', // Базовый тип, но datasets переопределяют
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: options.title || 'Совмещенный график',
+                            font: { size: 16, weight: 'bold' },
+                            padding: { top: 10, bottom: 20 }
+                        },
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            padding: 12,
+                            cornerRadius: 6,
+                            callbacks: {
+                                label: (context) => {
+                                    const label = context.dataset.label || '';
+                                    const value = context.raw || 0;
+                                    
+                                    if (label.includes('Сумма') || label.includes('₽')) {
+                                        return `${label}: ${ChartUtils.formatCurrency(value)}`;
+                                    } else if (label.includes('Количество')) {
+                                        return `${label}: ${ChartUtils.formatNumber(value, 0)} шт`;
+                                    } else {
+                                        return `${label}: ${ChartUtils.formatCurrency(value)}`;
+                                    }
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: (context) => {
+                                // Показываем подписи только для столбцов с большими значениями
+                                const dataset = context.dataset;
+                                if (dataset.type === 'bar') {
+                                    const value = context.raw;
+                                    const maxValue = Math.max(...dataset.data);
+                                    return value > maxValue * 0.1; // Показываем только >10% от максимума
+                                }
+                                return false; // Не показываем подписи на линии
+                            },
+                            anchor: 'end',
+                            align: 'top',
+                            offset: 4,
+                            color: '#333',
+                            font: { size: 11, weight: 'bold' },
+                            formatter: (value, context) => {
+                                const datasetLabel = context.dataset.label || '';
+                                if (datasetLabel.includes('Сумма')) {
+                                    return ChartUtils.formatCurrency(value, '', 0);
+                                }
+                                return ChartUtils.formatNumber(value, 0);
+                            }
+                        }
+                    },
+                    scales: {
+                        // Левая ось Y (для столбцов)
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: options.leftAxisLabel || 'Сумма, ₽',
+                                font: { size: 12, weight: 'bold' }
+                            },
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: (value) => ChartUtils.formatCurrency(value, '', 0)
+                            }
+                        },
+                        // Правая ось Y (для линии)
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: options.rightAxisLabel || 'Количество',
+                                font: { size: 12, weight: 'bold' }
+                            },
+                            beginAtZero: true,
+                            grid: {
+                                drawOnChartArea: false // Не рисуем сетку на правой оси
+                            },
+                            ticks: {
+                                callback: (value) => {
+                                    if (options.rightAxisLabel.includes('₽')) {
+                                        return ChartUtils.formatCurrency(value, '', 0);
+                                    }
+                                    return ChartUtils.formatNumber(value, 0);
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                font: { size: 11 }
+                            }
+                        }
+                    }
+                }
+            };
+            
+            const chart = new Chart(ctx, config);
+            
+            // Сохраняем в canvas
+            canvas.chartInstance = chart;
+            
+            console.log(`Совмещенный график создан: ${canvasId}`);
+            return chart;
+            
+        } catch (error) {
+            console.error(`Ошибка создания совмещенного графика ${canvasId}:`, error);
+            return null;
+        }
+    }
+    
+    /**
+     * Добавление интерактивности для совмещенного графика
+     */
+    _makeChartInteractive(chart, canvasId, chartType, side) {
+        if (!chart || !chart.canvas) return;
+        
+        chart.canvas.style.cursor = 'pointer';
+        chart.canvas.dataset.chartType = chartType;
+        chart.canvas.dataset.side = side;
+        
+        // Добавляем обработчик клика
+        chart.options.onClick = (event, elements) => {
+            if (elements && elements.length > 0) {
+                const element = elements[0];
+                const label = chart.data.labels[element.index];
+                const value = chart.data.datasets[element.datasetIndex].data[element.index];
+                
+                console.log(`Клик на ${canvasId}: ${label} = ${value}`);
+                
+                // Сохраняем фильтр
+                const filter = {
+                    type: 'combo',
+                    period: label,
+                    value: value,
+                    side: side,
+                    timestamp: Date.now()
+                };
+                
+                this.setActiveFilter(filter);
+                this.showSimpleNotification(`Выбран период: ${label}`);
+            }
+        };
+        
+        chart.update();
+    }
+    
+    /**
+     * Получение названия периода
+     */
+    _getPeriodName(period) {
+        const names = {
+            'day': 'дни',
+            'week': 'недели',
+            'month': 'месяцы',
+            'quarter': 'кварталы',
+            'year': 'годы'
+        };
+        return names[period] || period;
+    }
+    
+    /**
+     * Добавление статистики совмещенного графика
+     */
+    addComboStats(meta) {
+        const container = document.querySelector('.combo-stats');
+        if (!container) return;
+        
+        container.innerHTML = `
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-title">Период</div>
+                    <div class="stat-value">${meta.year || 'Все годы'}</div>
+                    <div class="stat-desc">${meta.periodsCount} ${this._getPeriodName(meta.period)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Всего потрачено</div>
+                    <div class="stat-value">${ChartUtils.formatCurrency(meta.totalAmount)}</div>
+                    <div class="stat-desc">${meta.totalCount} покупок</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Средний чек</div>
+                    <div class="stat-value">${ChartUtils.formatCurrency(meta.overallAverage)}</div>
+                    <div class="stat-desc">
+                        Макс сумма: ${ChartUtils.formatCurrency(meta.maxAmount)}<br>
+                        Макс покупок: ${ChartUtils.formatNumber(meta.maxCount, 0)} шт
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
 }
 
@@ -2458,6 +2950,7 @@ class UnifiedDataProcessor {
 	}
 	
 	/**
+	 * СРАВНЕНИЕ ПЕРИОДОВ
      * Сравнение двух периодов (год vs год)
      * Возвращает данные для обоих графиков: суммы и количества
      */
@@ -2668,7 +3161,395 @@ class UnifiedDataProcessor {
         
         return Array.from(years).sort((a, b) => b - a); // По убыванию
     }
+	
+    /**
+	 * ТЕПЛОВАЯ КАРТА
+     * Обработка данных для тепловой карты
+     * @param {Array} purchases - массив покупок
+     * @param {Object} options - { year, month }
+     * @returns {Object} { amountData, countData }
+     */
+    processHeatmapData(purchases, options = {}) {
+        console.log('Обработка данных для тепловой карты', options);
+        
+        const year = options.year || new Date().getFullYear();
+        const month = options.month || new Date().getMonth() + 1;
+        
+        // Фильтруем покупки за указанный месяц
+        const monthPurchases = purchases.filter(p => {
+            if (!p.date) return false;
+            const date = new Date(p.date);
+            return date.getFullYear() === year && (date.getMonth() + 1) === month;
+        });
+        
+        console.log(`Покупок за ${year}.${month}: ${monthPurchases.length}`);
+        
+        // Определяем дни недели и недели месяца
+        const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+        
+        // Получаем первый день месяца
+        const firstDay = new Date(year, month - 1, 1);
+        // Получаем последний день месяца
+        const lastDay = new Date(year, month, 0);
+        
+        // Определяем количество недель в месяце
+        const weeksCount = Math.ceil((lastDay.getDate() + (firstDay.getDay() || 7) - 1) / 7);
+        
+        // Создаем матрицу для тепловой карты
+        const amountMatrix = this._createEmptyMatrix(weeksCount, 7);
+        const countMatrix = this._createEmptyMatrix(weeksCount, 7);
+        
+        // Заполняем матрицы данными
+        monthPurchases.forEach(purchase => {
+            const date = new Date(purchase.date);
+            const day = date.getDate();
+            const weekday = date.getDay(); // 0 = Вс, 1 = Пн, ..., 6 = Сб
+            
+            // Преобразуем в наш формат (Пн = 0, Вс = 6)
+            let weekdayIndex = weekday === 0 ? 6 : weekday - 1;
+            
+            // Определяем номер недели в месяце
+            const weekNumber = Math.ceil((day + (firstDay.getDay() || 7) - 1) / 7) - 1;
+            
+            if (weekNumber < weeksCount) {
+                amountMatrix[weekNumber][weekdayIndex] += parseFloat(purchase.amount) || 0;
+                countMatrix[weekNumber][weekdayIndex] += 1;
+            }
+        });
+        
+        // Подготавливаем данные для Chart.js (кастомный heatmap)
+        const amountData = this._prepareHeatmapDataset(amountMatrix, weekdays, weeksCount, 'amount');
+        const countData = this._prepareHeatmapDataset(countMatrix, weekdays, weeksCount, 'count');
+        
+        // Добавляем мета-информацию
+        const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                           'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+        
+        return {
+            amountData: amountData,
+            countData: countData,
+            meta: {
+                year: year,
+                month: month,
+                monthName: monthNames[month - 1],
+                weeksCount: weeksCount,
+                totalAmount: amountMatrix.flat().reduce((a, b) => a + b, 0),
+                totalCount: countMatrix.flat().reduce((a, b) => a + b, 0),
+                maxAmount: Math.max(...amountMatrix.flat()),
+                maxCount: Math.max(...countMatrix.flat())
+            }
+        };
+    }
+    
+    /**
+     * Создание пустой матрицы
+     */
+    _createEmptyMatrix(rows, cols) {
+        return Array(rows).fill().map(() => Array(cols).fill(0));
+    }
+    
+    /**
+     * Подготовка данных для тепловой карты
+     */
+    _prepareHeatmapDataset(matrix, weekdays, weeksCount, mode) {
+        // Создаем данные в формате для heatmap
+        const datasets = [];
+        
+        // Определяем цветовую шкалу в зависимости от режима
+        const colorScale = mode === 'amount' 
+            ? ['#e8f5e9', '#c8e6c9', '#a5d6a7', '#81c784', '#66bb6a', '#4caf50', '#43a047', '#388e3c', '#2e7d32', '#1b5e20']
+            : ['#fff3e0', '#ffe0b2', '#ffcc80', '#ffb74d', '#ffa726', '#ff9800', '#fb8c00', '#f57c00', '#ef6c00', '#e65100'];
+        
+        // Находим максимальное значение для нормализации
+        const maxValue = Math.max(...matrix.flat());
+        
+        // Создаем тепловую карту как матрицу точек
+        for (let week = 0; week < weeksCount; week++) {
+            const weekData = matrix[week];
+            
+            // Определяем цвет на основе значения
+            const backgroundColor = weekData.map(value => {
+                if (value === 0) return '#f5f5f5'; // Серый для нулевых значений
+                const intensity = Math.min(9, Math.floor((value / maxValue) * 10) || 0);
+                return colorScale[intensity];
+            });
+            
+            datasets.push({
+                label: `Неделя ${week + 1}`,
+                data: weekData,
+                backgroundColor: backgroundColor,
+                borderColor: 'rgba(255, 255, 255, 0.8)',
+                borderWidth: 1,
+                borderRadius: 4,
+                barPercentage: 0.9,
+                categoryPercentage: 0.9
+            });
+        }
+        
+        return {
+            labels: weekdays,
+            datasets: datasets,
+            maxValue: maxValue
+        };
+    }
+    
+    /**
+     * Получение доступных месяцев для тепловой карты
+     */
+    getAvailableMonthsForHeatmap(purchases) {
+        const months = new Set();
+        
+        purchases.forEach(purchase => {
+            if (purchase.date) {
+                const date = new Date(purchase.date);
+                const year = date.getFullYear();
+                const month = date.getMonth() + 1;
+                months.add(`${year}-${month.toString().padStart(2, '0')}`);
+            }
+        });
+        
+        return Array.from(months)
+            .sort()
+            .reverse()
+            .map(key => {
+                const [year, month] = key.split('-');
+                const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+                                   'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+                return {
+                    key: key,
+                    year: parseInt(year),
+                    month: parseInt(month),
+                    monthName: monthNames[parseInt(month) - 1],
+                    display: `${monthNames[parseInt(month) - 1]} ${year}`
+                };
+            });
+    }
+	
+	/**
+	 * СОВМЕЩЁННЫЙ ГРАФИК
+     * Обработка данных для совмещенного графика
+     * @param {Array} purchases - массив покупок
+     * @param {Object} options - { period, year }
+     * @returns {Object} { amountCountData, amountAverageData }
+     */
+    processComboData(purchases, options = {}) {
+        console.log('Обработка данных для совмещенного графика', options);
+        
+        const period = options.period || 'month'; // month, week, day
+        const year = options.year || null;
+        
+        // Фильтруем по году если указан
+        let filteredPurchases = purchases;
+        if (year) {
+            filteredPurchases = purchases.filter(p => {
+                if (!p.date) return false;
+                const date = new Date(p.date);
+                return date.getFullYear() === year;
+            });
+        }
+        
+        // Агрегируем данные по периодам
+        const aggregatedData = this._aggregateByPeriod(filteredPurchases, period);
+        
+        // Подготавливаем метки
+        const labels = this._getPeriodLabels(aggregatedData, period, year);
+        
+        // Данные для левого графика: сумма + количество
+        const amountCountData = {
+            labels: labels,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Сумма расходов, ₽',
+                    data: aggregatedData.map(d => d.amount),
+                    backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                    borderColor: '#2980b9',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    order: 2,
+                    yAxisID: 'y' // Левая ось
+                },
+                {
+                    type: 'line',
+                    label: 'Количество покупок',
+                    data: aggregatedData.map(d => d.count),
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#e74c3c',
+                    tension: 0.3,
+                    fill: false,
+                    order: 1,
+                    yAxisID: 'y1' // Правая ось
+                }
+            ]
+        };
+        
+        // Данные для правого графика: сумма + средний чек
+        const amountAverageData = {
+            labels: labels,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Сумма расходов, ₽',
+                    data: aggregatedData.map(d => d.amount),
+                    backgroundColor: 'rgba(46, 204, 113, 0.7)',
+                    borderColor: '#27ae60',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    order: 2,
+                    yAxisID: 'y'
+                },
+                {
+                    type: 'line',
+                    label: 'Средний чек, ₽',
+                    data: aggregatedData.map(d => d.average),
+                    borderColor: '#f39c12',
+                    backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#f39c12',
+                    tension: 0.3,
+                    fill: false,
+                    order: 1,
+                    yAxisID: 'y1'
+                }
+            ]
+        };
+        
+        // Добавляем мета-информацию
+        const totalAmount = aggregatedData.reduce((sum, d) => sum + d.amount, 0);
+        const totalCount = aggregatedData.reduce((sum, d) => sum + d.count, 0);
+        const overallAverage = totalCount > 0 ? totalAmount / totalCount : 0;
+        
+        return {
+            amountCountData: amountCountData,
+            amountAverageData: amountAverageData,
+            meta: {
+                period: period,
+                year: year,
+                totalAmount: totalAmount,
+                totalCount: totalCount,
+                overallAverage: overallAverage,
+                periodsCount: aggregatedData.length,
+                maxAmount: Math.max(...aggregatedData.map(d => d.amount)),
+                maxCount: Math.max(...aggregatedData.map(d => d.count))
+            }
+        };
+    }
+    
+    /**
+     * Агрегация данных по периодам
+     */
+    _aggregateByPeriod(purchases, period) {
+        const aggregation = {};
+        
+        purchases.forEach(purchase => {
+            if (!purchase.date) return;
+            
+            const date = new Date(purchase.date);
+            let periodKey;
+            
+            switch(period) {
+                case 'day':
+                    periodKey = date.toISOString().split('T')[0];
+                    break;
+                case 'week':
+                    // Получаем номер недели в году
+                    const start = new Date(date.getFullYear(), 0, 1);
+                    const days = Math.floor((date - start) / (24 * 60 * 60 * 1000));
+                    const weekNumber = Math.ceil((days + start.getDay() + 1) / 7);
+                    periodKey = `${date.getFullYear()}-W${weekNumber.toString().padStart(2, '0')}`;
+                    break;
+                case 'month':
+                default:
+                    periodKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                    break;
+            }
+            
+            if (!aggregation[periodKey]) {
+                aggregation[periodKey] = {
+                    key: periodKey,
+                    date: date,
+                    amount: 0,
+                    count: 0,
+                    sumPrice: 0,
+                    priceCount: 0
+                };
+            }
+            
+            const amount = parseFloat(purchase.amount) || 0;
+            const price = parseFloat(purchase.price) || 0;
+            
+            aggregation[periodKey].amount += amount;
+            aggregation[periodKey].count += 1;
+            aggregation[periodKey].sumPrice += price;
+            aggregation[periodKey].priceCount += 1;
+        });
+        
+        // Преобразуем в массив и сортируем по дате
+        let result = Object.values(aggregation)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        // Добавляем средний чек
+        result = result.map(item => ({
+            ...item,
+            average: item.count > 0 ? item.amount / item.count : 0,
+            averagePrice: item.priceCount > 0 ? item.sumPrice / item.priceCount : 0
+        }));
+        
+        return result;
+    }
+    
+    /**
+     * Получение меток для периодов
+     */
+    _getPeriodLabels(aggregatedData, period, year) {
+        return aggregatedData.map(item => {
+            const date = new Date(item.date);
+            
+            switch(period) {
+                case 'day':
+                    return date.toLocaleDateString('ru-RU', { 
+                        day: 'numeric', 
+                        month: 'short' 
+                    });
+                    
+                case 'week':
+                    const weekMatch = item.key.match(/W(\d+)/);
+                    const weekNum = weekMatch ? weekMatch[1] : '';
+                    return `Нед ${weekNum}`;
+                    
+                case 'month':
+                default:
+                    return date.toLocaleDateString('ru-RU', { 
+                        month: 'short', 
+                        year: year ? undefined : 'numeric' 
+                    });
+            }
+        });
+    }
+    
+    /**
+     * Получение доступных годов для совмещенного графика
+     */
+    getAvailableYearsForCombo(purchases) {
+        const years = new Set();
+        
+        purchases.forEach(purchase => {
+            if (purchase.date) {
+                const date = new Date(purchase.date);
+                years.add(date.getFullYear());
+            }
+        });
+        
+        return Array.from(years).sort((a, b) => b - a);
+    }
 
+	
 }
 
 // ============================================

@@ -1489,3 +1489,115 @@ body {
     color: #999;
     margin-top: 5px;
 }
+
+/* Тепловая карта */
+.heatmap-controls {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 2px solid #e9ecef;
+}
+
+.heatmap-settings {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.period-selector {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.radio-label {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 15px;
+    cursor: pointer;
+}
+
+.radio-label input {
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+.heatmap-legend {
+    background: white;
+    padding: 10px 15px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.color-scale {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.gradient-box {
+    width: 200px;
+    height: 20px;
+    background: linear-gradient(to right, #e8f5e9, #4caf50, #1b5e20);
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.heatmap-stats {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Совмещённый график */
+.combo-controls {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 2px solid #e9ecef;
+}
+
+.combo-settings {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.period-selector {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.combo-legend {
+    display: flex;
+    gap: 20px;
+    background: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+.combo-stats {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
+}

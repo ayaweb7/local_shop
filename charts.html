@@ -132,7 +132,102 @@
 				<button class="chart-type-btn" data-type="products">🛒 По товарам</button>
 				<!-- Кнопка периодов сравнения -->
 				<button class="chart-type-btn" data-type="comparison">🥓 Сравнение периодов</button>
+				<!-- Кнопка тепловой карты -->
+				<button class="chart-type-btn" data-type="heatmap">💦 Тепловая карта</button>
+				<!-- Кнопка совмещенного графика -->
+				<button class="chart-type-btn" data-type="combo">🎯 Совмещенный график</button>
 			</div>
+		</div>
+		
+		<!-- Панель управления тепловой картой -->
+		<div id="heatmap-controls" class="heatmap-controls" style="display: none;">
+			<h3>Настройка тепловой карты</h3>
+			
+			<div class="heatmap-settings">
+				<div class="period-selector">
+					<div class="filter-group">
+						<label>📅 Месяц:</label>
+						<select id="heatmap-month-select">
+							<!-- Заполнится динамически -->
+						</select>
+					</div>
+					
+					<div class="filter-group">
+						<label>📊 Отображать:</label>
+						<label class="radio-label">
+							<input type="radio" name="heatmap-metric" value="amount" checked>
+							Суммы
+						</label>
+						<label class="radio-label">
+							<input type="radio" name="heatmap-metric" value="both">
+							Суммы + Количество
+						</label>
+					</div>
+				</div>
+				
+				<div class="heatmap-legend">
+					<div class="color-scale">
+						<span>Меньше</span>
+						<div class="gradient-box"></div>
+						<span>Больше</span>
+					</div>
+				</div>
+			</div>
+			
+			<!-- Контейнер для статистики -->
+			<div class="heatmap-stats"></div>
+		</div>
+		
+		<!-- Панель управления совмещенным графиком -->
+		<div id="combo-controls" class="combo-controls" style="display: none;">
+			<h3>Настройка совмещенного графика</h3>
+			
+			<div class="combo-settings">
+				<div class="period-selector">
+					<div class="filter-group">
+						<label>📊 Период:</label>
+						<select id="combo-period">
+							<option value="month">По месяцам</option>
+							<option value="week">По неделям</option>
+							<option value="day">По дням</option>
+						</select>
+					</div>
+					
+					<div class="filter-group">
+						<label>📅 Год:</label>
+						<select id="combo-year">
+							<option value="">Все годы</option>
+							<!-- Заполнится динамически -->
+						</select>
+					</div>
+					
+					<div class="filter-group">
+						<label>📈 Показать:</label>
+						<select id="combo-metric">
+							<option value="count">Количество покупок</option>
+							<option value="average">Средний чек</option>
+						</select>
+					</div>
+				</div>
+				
+				<div class="combo-legend">
+					<div class="legend-item">
+						<span class="color-dot" style="background: #3498db;"></span>
+						<span>Сумма расходов</span>
+					</div>
+					<div class="legend-item">
+						<span class="color-dot" style="background: #e74c3c;"></span>
+						<span>Количество покупок</span>
+					</div>
+					<div class="legend-item">
+						<span class="color-dot" style="background: #f39c12;"></span>
+						<span>Средний чек</span>
+					</div>
+				</div>
+			</div>
+			
+			<!-- Контейнер для статистики -->
+			<div class="combo-stats"></div>
 		</div>
 		
 		<!-- Селектор типа графиков -->
@@ -216,7 +311,12 @@
 			quarter1: null,
 			quarter2: null
 		};
+		let currentHeatmapMonth = null;
+		let currentComboPeriod = 'month';
+		let currentComboYear = '';
+		let currentComboMetric = 'count';
 		
+		// DOMContentLoaded
 		document.addEventListener('DOMContentLoaded', async () => {
 			console.log('Charts page initialized');
 			
@@ -243,6 +343,12 @@
 			
 			// Обработчик сравнения
 			setupComparisonControls();
+			
+			// Тепловая карта
+			setupHeatmapControls();
+			
+			// Совмещенный график
+			setupComboControls();
 		});
 		
 		async function loadData() {
@@ -766,13 +872,27 @@
 				}
 			}
 			
-			// Показываем/скрываем панель сравнения
+			// Показываем/скрываем панель СРАВНЕНИЯ
 			const comparisonControls = document.getElementById('comparison-controls');
 			if (currentChartType === 'comparison') {
 				comparisonControls.style.display = 'block';
 			} else {
 				comparisonControls.style.display = 'none';
 			}
+			
+			// Показываем/скрываем панели СРАВНЕНИЯ в зависимости от типа
+			document.getElementById('comparison-controls').style.display = 
+				currentChartType === 'comparison' ? 'block' : 'none';
+			document.getElementById('heatmap-controls').style.display = 
+				currentChartType === 'heatmap' ? 'block' : 'none';
+				
+			// Показываем/скрываем панели СОВМЕЩЁННОГО ГРАФИКА в зависимости от типа
+			document.getElementById('comparison-controls').style.display = 
+				currentChartType === 'comparison' ? 'block' : 'none';
+			document.getElementById('heatmap-controls').style.display = 
+				currentChartType === 'heatmap' ? 'block' : 'none';
+			document.getElementById('combo-controls').style.display = 
+				currentChartType === 'combo' ? 'block' : 'none';
 			
 			// Создаем графики в зависимости от типа
 			switch(currentChartType) {
@@ -793,6 +913,12 @@
 					break;
 				case 'comparison':
 					createComparisonCharts(window.chartData.purchases); // Используем все данные для сравнения
+					break;
+				case 'heatmap':
+					createHeatmapCharts(window.chartData.purchases);
+					break;
+				case 'combo':
+					createComboCharts(window.chartData.purchases);
 					break;
 			}
 		}
@@ -852,6 +978,220 @@
 			}
 			
 			return { valid: true };
+		}
+		
+		// Функции для тепловой карты:
+		function setupHeatmapControls() {
+			const monthSelect = document.getElementById('heatmap-month-select');
+			const metricRadios = document.querySelectorAll('input[name="heatmap-metric"]');
+			
+			// Заполняем список доступных месяцев
+			function populateMonthSelect() {
+				if (!window.chartData || !window.chartData.purchases) return;
+				
+				const availableMonths = unifiedProcessor.getAvailableMonthsForHeatmap(window.chartData.purchases);
+				
+				monthSelect.innerHTML = availableMonths.map(m => 
+					`<option value="${m.key}">${m.display}</option>`
+				).join('');
+				
+				// Выбираем последний доступный месяц
+				if (availableMonths.length > 0) {
+					monthSelect.value = availableMonths[0].key;
+					currentHeatmapMonth = availableMonths[0];
+				}
+			}
+			
+			// Обработчик изменения месяца
+			monthSelect.addEventListener('change', function() {
+				const [year, month] = this.value.split('-');
+				currentHeatmapMonth = {
+					year: parseInt(year),
+					month: parseInt(month),
+					display: this.options[this.selectedIndex].text
+				};
+				
+				// Обновляем график
+				if (currentChartType === 'heatmap') {
+					updateCharts();
+				}
+			});
+			
+			// Обработчики радио-кнопок
+			metricRadios.forEach(radio => {
+				radio.addEventListener('change', function() {
+					if (currentChartType === 'heatmap') {
+						updateCharts();
+					}
+				});
+			});
+			
+			// Заполняем при загрузке
+			setTimeout(populateMonthSelect, 1000);
+		}
+
+		// Функция создания тепловой карты
+		function createHeatmapCharts(purchases) {
+			console.log('Создание тепловых карт');
+			
+			if (!currentHeatmapMonth) {
+				// Берем последний доступный месяц
+				const available = unifiedProcessor.getAvailableMonthsForHeatmap(purchases);
+				if (available.length === 0) {
+					console.warn('Нет данных для тепловой карты');
+					return;
+				}
+				currentHeatmapMonth = available[0];
+			}
+			
+			// Получаем выбранный тип отображения
+			const showBoth = document.querySelector('input[name="heatmap-metric"]:checked').value === 'both';
+			
+			// Создаем тепловую карту
+			chartManager.createHeatmapPair(
+				{ left: 'left-chart', right: 'right-chart' },
+				purchases,
+				{
+					year: currentHeatmapMonth.year,
+					month: currentHeatmapMonth.month
+				}
+			);
+			
+			// Обновляем заголовки
+			document.getElementById('left-chart-title').innerHTML = 
+				`🔥 Суммы: ${currentHeatmapMonth.display}`;
+			document.getElementById('right-chart-title').innerHTML = 
+				`📊 Количество покупок: ${currentHeatmapMonth.display}`;
+		}
+		
+		// Функции для совмещенного графика:
+		function setupComboControls() {
+			const periodSelect = document.getElementById('combo-period');
+			const yearSelect = document.getElementById('combo-year');
+			const metricSelect = document.getElementById('combo-metric');
+			
+			// Заполняем список доступных годов
+			function populateYearSelect() {
+				if (!window.chartData || !window.chartData.purchases) return;
+				
+				const years = unifiedProcessor.getAvailableYearsForCombo(window.chartData.purchases);
+				
+				yearSelect.innerHTML = '<option value="">Все годы</option>';
+				years.forEach(year => {
+					yearSelect.innerHTML += `<option value="${year}">${year} год</option>`;
+				});
+				
+				// Выбираем последний год
+				if (years.length > 0) {
+					yearSelect.value = years[0];
+					currentComboYear = years[0];
+				}
+			}
+			
+			// Обработчики изменения
+			periodSelect.addEventListener('change', function() {
+				currentComboPeriod = this.value;
+				if (currentChartType === 'combo') updateCharts();
+			});
+			
+			yearSelect.addEventListener('change', function() {
+				currentComboYear = this.value;
+				if (currentChartType === 'combo') updateCharts();
+			});
+			
+			metricSelect.addEventListener('change', function() {
+				currentComboMetric = this.value;
+				if (currentChartType === 'combo') updateCharts();
+			});
+			
+			// Заполняем при загрузке
+			setTimeout(populateYearSelect, 1000);
+		}
+
+		// Функция создания совмещенного графика
+		function createComboCharts(purchases) {
+			console.log('Создание совмещенных графиков', {
+				period: currentComboPeriod,
+				year: currentComboYear,
+				metric: currentComboMetric
+			});
+			
+			// Определяем заголовки в зависимости от выбранной метрики
+			let leftTitle, rightTitle;
+			
+			if (currentComboMetric === 'count') {
+				leftTitle = `💰 Сумма + Количество (${getPeriodNameRu(currentComboPeriod)})`;
+				rightTitle = `💰 Сумма + Количество (${currentComboYear || 'все годы'})`;
+			} else {
+				leftTitle = `💰 Сумма + Средний чек (${getPeriodNameRu(currentComboPeriod)})`;
+				rightTitle = `💰 Сумма + Средний чек (${currentComboYear || 'все годы'})`;
+			}
+			
+			// Создаем графики
+			chartManager.createComboPair(
+				{ left: 'left-chart', right: 'right-chart' },
+				purchases,
+				{
+					period: currentComboPeriod,
+					year: currentComboYear ? parseInt(currentComboYear) : null,
+					leftTitle: leftTitle,
+					rightTitle: rightTitle,
+					metric: currentComboMetric
+				}
+			);
+		}
+		
+		// Дополнительный мини-дашборд с ключевыми показателями
+		function addComboKPIs(meta) {
+			const kpiContainer = document.querySelector('.combo-kpis');
+			if (!kpiContainer) return;
+			
+			// Рассчитываем тренд
+			const firstHalf = meta.amountCountData.datasets[0].data.slice(0, Math.floor(meta.periodsCount / 2));
+			const secondHalf = meta.amountCountData.datasets[0].data.slice(Math.floor(meta.periodsCount / 2));
+			
+			const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+			const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+			
+			const trend = secondAvg - firstAvg;
+			const trendPercent = firstAvg > 0 ? ((trend / firstAvg) * 100).toFixed(1) : 0;
+			const trendIcon = trend > 0 ? '📈' : '📉';
+			const trendClass = trend > 0 ? 'positive' : 'negative';
+			
+			kpiContainer.innerHTML = `
+				<div class="kpi-grid">
+					<div class="kpi-card">
+						<div class="kpi-icon">💰</div>
+						<div class="kpi-label">Всего расходов</div>
+						<div class="kpi-value">${ChartUtils.formatCurrency(meta.totalAmount)}</div>
+						<div class="kpi-trend ${trendClass}">
+							${trendIcon} ${Math.abs(trendPercent)}% ${trend > 0 ? 'рост' : 'снижение'}
+						</div>
+					</div>
+					<div class="kpi-card">
+						<div class="kpi-icon">🛒</div>
+						<div class="kpi-label">Всего покупок</div>
+						<div class="kpi-value">${ChartUtils.formatNumber(meta.totalCount, 0)}</div>
+						<div class="kpi-sub">${ChartUtils.formatCurrency(meta.overallAverage)} средний чек</div>
+					</div>
+					<div class="kpi-card">
+						<div class="kpi-icon">📊</div>
+						<div class="kpi-label">Пик расходов</div>
+						<div class="kpi-value">${ChartUtils.formatCurrency(meta.maxAmount)}</div>
+						<div class="kpi-sub">Макс. покупок: ${ChartUtils.formatNumber(meta.maxCount, 0)}</div>
+					</div>
+				</div>
+			`;
+		}
+
+		// Вспомогательная функция для названий периодов
+		function getPeriodNameRu(period) {
+			const names = {
+				'day': 'по дням',
+				'week': 'по неделям',
+				'month': 'по месяцам'
+			};
+			return names[period] || period;
 		}
 		
 	</script>
