@@ -1,801 +1,144 @@
 <?php
-// api/api.php
+// api/api.php - ЕДИНЫЙ РОУТИНГ ДЛЯ ВСЕХ ЭНДПОИНТОВ
 require_once '../blocks/date_base.php';
+
+// --- ВРЕМЕННО: для отладки ---
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+
+// Логируем все запросы
+// file_put_contents('api_debug.log', date('Y-m-d H:i:s') . ' - ' . $_SERVER['REQUEST_URI'] . "\n", FILE_APPEND);
+// --- ВРЕМЕННО: для отладки ---
 
 // Разрешаем CORS для локальной разработки
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Content-Type: application/json; charset=utf-8');
 
 // Обрабатываем OPTIONS запросы (для CORS)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// Получаем метод и путь запроса
-$method = $_SERVER['REQUEST_METHOD'];
+// Получаем запрос
+// $method = $_SERVER['REQUEST_METHOD'];
 $request = $_GET['request'] ?? '';
-$endpoint = explode('/', $request);
 
-// Основной маршрутизатор
-// В существующий маршрутизатор в api.php ДОБАВЬТЕ:
-switch ($endpoint[0]) {
+// ==================== ЕДИНЫЙ МАРШРУТИЗАТОР ====================
+switch ($request) {
+	// --- Существующие эндпоинты ---
+	// Товары
     case 'purchases':
-        handlePurchases($method, $endpoint, $db);
+        handlePurchases($db);
         break;
+    // Магазины    
     case 'stores':
-        handleStores($method, $endpoint, $db);  // ← ДОРАБОТАЕМ
+        handleStores($db);
         break;
+    // Города    
     case 'cities':
-        handleCities($method, $endpoint, $db);  // ← ДОРАБОТАЕМ
+        handleCities($db);
         break;
-	case 'categories':
-        handleCategories($method, $endpoint, $db);
+    // Категории    
+    case 'categories':
+        handleCategories($db);
         break;
-	case 'stats-categories':
-		handleStatsCategories($method, $db);
-		break;
+    // Статистика    
+    case 'stats-categories':
+        handleStatsCategories($db);
+        break;
+    // --- НОВЫЙ ЭНДПОИНТ для анализа цен ---
+    case 'product-prices':
+        getProductPrices($db);
+        break;
+    // --- Если ничего не найдено ---
     default:
         http_response_code(404);
-        echo json_encode(['error' => 'Endpoint not found'], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['error' => 'Endpoint not found: ' . $request], JSON_UNESCAPED_UNICODE);
         break;
 }
 
 // ==================== ОБРАБОТЧИКИ КОНКРЕТНЫХ ЭНДПОИНТОВ ====================
 
-// ОБРАБОТКА ПОКУПОК
-function handlePurchases($method, $endpoint, $db) {
-    switch ($method) {
-        case 'GET':
-            // Получение всех покупок с JOIN магазинов и городов
-            $sql = "SELECT s.*, 
-						   st.shop as store_name, st.street, st.house,
-						   l.town_ru as city_name,
-						   c.name as category_name, c.icon as category_icon, c.color as category_color
-					FROM shops s
-					LEFT JOIN stores st ON s.store_id = st.id
-					LEFT JOIN locality l ON st.locality_id = l.id
-					LEFT JOIN categories c ON s.category_id = c.id
-					ORDER BY s.date DESC";
+// ==================== ОБРАБОТЧИК ПОКУПОК (MySQLi) ====================
+function handlePurchases($db) {
+    // Получение всех покупок с JOIN магазинов и городов
+	$sql = "SELECT s.*, 
+				   st.shop as store_name, st.street, st.house,
+				   l.town_ru as city_name,
+				   c.name as category_name, c.icon as category_icon, c.color as category_color
+			FROM shops s
+			LEFT JOIN stores st ON s.store_id = st.id
+			LEFT JOIN locality l ON st.locality_id = l.id
+			LEFT JOIN categories c ON s.category_id = c.id
+			ORDER BY s.date DESC";
             
-            $result = $db->query($sql);
-            if (!$result) {
-                http_response_code(500);
-                echo json_encode(['error' => $db->error]);
-                return;
-            }
+	$result = $db->query($sql);
+	if (!$result) {
+		http_response_code(500);
+		echo json_encode(['error' => $db->error]);
+		return;
+	}
             
-            $purchases = [];
-            while ($row = $result->fetch_assoc()) {
-                // Форматируем данные для фронтенда
-                $purchases[] = [
-                    'id' => (int)$row['id'],
-                    'date' => $row['date'],
-                    'name' => $row['name'],
-					'category_id' => (int)$row['category_id'],
-					'category_name' => $row['category_name'],
-					'category_icon' => $row['category_icon'],
-					'category_color' => $row['category_color'],
-                    'price' => (float)$row['price'],
-                    'quantity' => (float)$row['quantity'],
-                    'item' => $row['item'],
-                    'amount' => (float)$row['amount'],
-                    'characteristic' => $row['characteristic'],
-                    'store_id' => (int)$row['store_id'],
-                    'store' => [
-                        'shop' => $row['store_name'],
-                        'street' => $row['street'],
-                        'house' => $row['house'],
-                        'locality' => ['town_ru' => $row['city_name']]
-                    ],
-                    'full_address' => formatAddress($row)
-                ];
-            }
-            
-            echo json_encode(['data' => $purchases], JSON_UNESCAPED_UNICODE);
-            break;
-
-        
-        case 'POST':
-			// Получаем и валидируем JSON
-			$inputJson = file_get_contents('php://input');
-			$input = json_decode($inputJson, true);
-			
-			if (json_last_error() !== JSON_ERROR_NONE) {
-				http_response_code(400);
-				echo json_encode(['error' => 'Invalid JSON: ' . json_last_error_msg()], JSON_UNESCAPED_UNICODE);
-				return;
-			}
-			
-			// Проверяем обязательные поля
-			$required = ['date', 'store_id', 'name', 'category_id', 'price', 'quantity', 'item', 'amount'];
-			foreach ($required as $field) {
-				if (!isset($input[$field]) || $input[$field] === '') {
-					http_response_code(400);
-					echo json_encode(['error' => "Missing required field: $field"], JSON_UNESCAPED_UNICODE);
-					return;
-				}
-			}
-			
-			// ПРЕДВАРИТЕЛЬНО ПРИСВАИВАЕМ ЗНАЧЕНИЯ ПЕРЕМЕННЫМ
-			$date = $input['date'];
-			$store_id = (int)$input['store_id'];
-			$name = $input['name'];
-			$category_id = isset($input['category_id']) ? (int)$input['category_id'] : null; // ← НОВОЕ
-			$characteristic = $input['characteristic'] ?? '';
-			$quantity = (float)$input['quantity'];
-			$item = $input['item'];
-			$price = (float)$input['price'];
-			$amount = (float)$input['amount'];
-			
-			// Подготавливаем запрос
-			$stmt = $db->prepare("
-				INSERT INTO shops (date, store_id, name, category_id, characteristic, quantity, item, price, amount)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-			");
-			
-			if (!$stmt) {
-				http_response_code(500);
-				echo json_encode(['error' => 'Prepare failed: ' . $db->error], JSON_UNESCAPED_UNICODE);
-				return;
-			}
-			
-			// Привязываем параметры (теперь через переменные)
-			$stmt->bind_param(
-				'sisssdsdd',
-				$date,
-				$store_id,
-				$name,
-				$category_id,
-				$characteristic,
-				$quantity,
-				$item,
-				$price,
-				$amount
-			);
-			
-			if ($stmt->execute()) {
-				echo json_encode([
-					'success' => true,
-					'id' => $stmt->insert_id,
-					'message' => 'Purchase added successfully'
-				], JSON_UNESCAPED_UNICODE);
-			} else {
-				http_response_code(500);
-				echo json_encode(['error' => 'Execute failed: ' . $stmt->error], JSON_UNESCAPED_UNICODE);
-			}
-			break;
-            
-        case 'DELETE':
-            // Удаление покупки
-            $id = $endpoint[1] ?? 0;
-            if (!$id) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Purchase ID required']);
-                return;
-            }
-            
-            $stmt = $db->prepare("DELETE FROM shops WHERE id = ?");
-            $stmt->bind_param('i', $id);
-            
-            if ($stmt->execute()) {
-                echo json_encode(['success' => true, 'message' => 'Purchase deleted']);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => $stmt->error]);
-            }
-            break;
-            
-        default:
-            http_response_code(405);
-            echo json_encode(['error' => 'Method not allowed']);
-            break;
-			
-		// В функции handlePurchases ДОБАВЬТЕ case 'PUT':
-		case 'PUT':
-			// Проверяем ID
-			if (!isset($endpoint[1]) || !is_numeric($endpoint[1])) {
-				http_response_code(400);
-				echo json_encode(['error' => 'Invalid purchase ID'], JSON_UNESCAPED_UNICODE);
-				return;
-			}
-			
-			$id = (int)$endpoint[1];
-			$input = json_decode(file_get_contents('php://input'), true);
-			
-			if (json_last_error() !== JSON_ERROR_NONE) {
-				http_response_code(400);
-				echo json_encode(['error' => 'Invalid JSON: ' . json_last_error_msg()], JSON_UNESCAPED_UNICODE);
-				return;
-			}
-			
-			// ПРЕДВАРИТЕЛЬНО ПРИСВАИВАЕМ ЗНАЧЕНИЯ ПЕРЕМЕННЫМ
-			$date = $input['date'];
-			$store_id = (int)$input['store_id'];
-			$name = $input['name'];
-			$category_id = isset($input['category_id']) ? (int)$input['category_id'] : null; // ← НОВОЕ
-			$characteristic = $input['characteristic'] ?? '';
-			$quantity = (float)$input['quantity'];
-			$item = $input['item'];
-			$price = (float)$input['price'];
-			$amount = (float)$input['amount'];
-			
-			try {
-				$stmt = $db->prepare("
-					UPDATE shops 
-					SET date = ?, store_id = ?, name = ?, category_id = ?, 
-						characteristic = ?, quantity = ?, item = ?, price = ?, amount = ?
-					WHERE id = ?
-				");
-				
-				if (!$stmt) {
-					throw new Exception('Prepare failed: ' . $db->error);
-				}
-				
-				// Привязываем параметры через переменные
-				$stmt->bind_param(
-					'sisssdsddi',
-					$date,
-					$store_id,
-					$name,
-					$category_id,
-					$characteristic,
-					$quantity,
-					$item,
-					$price,
-					$amount,
-					$id
-				);
-				
-				if ($stmt->execute()) {
-					echo json_encode([
-						'success' => true,
-						'message' => 'Purchase updated successfully'
-					], JSON_UNESCAPED_UNICODE);
-				} else {
-					throw new Exception('Execute failed: ' . $stmt->error);
-				}
-				
-			} catch (Exception $e) {
-				http_response_code(500);
-				echo json_encode(['error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
-			}
-			break;
+	$purchases = [];
+	while ($row = $result->fetch_assoc()) {
+        $purchases[] = $row;
     }
+    
+    echo json_encode(['data' => $purchases], JSON_UNESCAPED_UNICODE);
 }
 
-// ОБРАБОТКА МАГАЗИНОВ (ПОЛНЫЙ CRUD)
-function handleStores($method, $endpoint, $db) {
-    switch ($method) {
-        case 'GET':
-            // Получение всех магазинов с городами
-            $sql = "SELECT s.*, l.town_ru as city_name 
-                    FROM stores s 
-                    LEFT JOIN locality l ON s.locality_id = l.id 
-                    ORDER BY s.shop";
-            
-            $result = $db->query($sql);
-            if (!$result) {
-                http_response_code(500);
-                echo json_encode(['error' => $db->error], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $stores = [];
-            while ($row = $result->fetch_assoc()) {
-                $stores[] = [
-                    'id' => (int)$row['id'],
-                    'shop' => $row['shop'],
-                    'street' => $row['street'],
-                    'house' => $row['house'],
-                    'phone' => $row['phone'],
-                    'locality_id' => (int)$row['locality_id'],
-                    'city_name' => $row['city_name']
-                ];
-            }
-            
-            echo json_encode(['data' => $stores], JSON_UNESCAPED_UNICODE);
-            break;
-            
-        case 'POST':
-            // Добавление нового магазина
-            $input = json_decode(file_get_contents('php://input'), true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid JSON'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            // Проверка обязательных полей
-            $required = ['shop', 'street', 'house', 'locality_id'];
-            foreach ($required as $field) {
-                if (empty($input[$field])) {
-                    http_response_code(400);
-                    echo json_encode(['error' => "Missing field: $field"], JSON_UNESCAPED_UNICODE);
-                    return;
-                }
-            }
-            
-            // Присваиваем переменные
-            $shop = $input['shop'];
-            $street = $input['street'];
-            $house = $input['house'];
-            $phone = $input['phone'] ?? '';
-            $locality_id = (int)$input['locality_id'];
-            
-            $stmt = $db->prepare("
-                INSERT INTO stores (shop, street, house, phone, locality_id) 
-                VALUES (?, ?, ?, ?, ?)
-            ");
-            
-            if (!$stmt) {
-                http_response_code(500);
-                echo json_encode(['error' => 'Prepare failed'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $stmt->bind_param('ssssi', $shop, $street, $house, $phone, $locality_id);
-            
-            if ($stmt->execute()) {
-                echo json_encode([
-                    'success' => true,
-                    'id' => $stmt->insert_id,
-                    'message' => 'Store added successfully'
-                ], JSON_UNESCAPED_UNICODE);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => $stmt->error], JSON_UNESCAPED_UNICODE);
-            }
-            break;
-            
-        case 'PUT':
-            // Обновление магазина
-            if (!isset($endpoint[1]) || !is_numeric($endpoint[1])) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid store ID'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $id = (int)$endpoint[1];
-            $input = json_decode(file_get_contents('php://input'), true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid JSON'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            // Присваиваем переменные
-            $shop = $input['shop'];
-            $street = $input['street'];
-            $house = $input['house'];
-            $phone = $input['phone'] ?? '';
-            $locality_id = (int)$input['locality_id'];
-            
-            $stmt = $db->prepare("
-                UPDATE stores 
-                SET shop = ?, street = ?, house = ?, phone = ?, locality_id = ?
-                WHERE id = ?
-            ");
-            
-            if (!$stmt) {
-                http_response_code(500);
-                echo json_encode(['error' => 'Prepare failed'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $stmt->bind_param('ssssii', $shop, $street, $house, $phone, $locality_id, $id);
-            
-            if ($stmt->execute()) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Store updated successfully'
-                ], JSON_UNESCAPED_UNICODE);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => $stmt->error], JSON_UNESCAPED_UNICODE);
-            }
-            break;
-            
-        case 'DELETE':
-            // Удаление магазина
-            if (!isset($endpoint[1]) || !is_numeric($endpoint[1])) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid store ID'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $id = (int)$endpoint[1];
-            
-            // Проверяем, нет ли покупок в этом магазине
-            $checkStmt = $db->prepare("SELECT COUNT(*) as count FROM shops WHERE store_id = ?");
-            $checkStmt->bind_param('i', $id);
-            $checkStmt->execute();
-            $result = $checkStmt->get_result();
-            $row = $result->fetch_assoc();
-            
-            if ($row['count'] > 0) {
-                http_response_code(400);
-                echo json_encode([
-                    'error' => 'Cannot delete store with existing purchases. Delete purchases first.'
-                ], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $stmt = $db->prepare("DELETE FROM stores WHERE id = ?");
-            $stmt->bind_param('i', $id);
-            
-            if ($stmt->execute()) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Store deleted successfully'
-                ], JSON_UNESCAPED_UNICODE);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => $stmt->error], JSON_UNESCAPED_UNICODE);
-            }
-            break;
-            
-        default:
-            http_response_code(405);
-            echo json_encode(['error' => 'Method not allowed'], JSON_UNESCAPED_UNICODE);
-            break;
-    }
+// ==================== ОБРАБОТЧИК МАГАЗИНОВ (MySQLi) ====================
+function handleStores($db) {
+    $sql = "SELECT s.*, l.town_ru as city_name 
+            FROM stores s 
+            LEFT JOIN locality l ON s.locality_id = l.id 
+            ORDER BY s.shop";
+    
+    $result = $db->query($sql);
+    
+    $stores = [];
+    while ($row = $result->fetch_assoc()) {
+		$stores[] = $row;
+	}
+    
+    echo json_encode(['data' => $stores], JSON_UNESCAPED_UNICODE);
 }
 
-// ОБРАБОТКА ГОРОДОВ (ПОЛНЫЙ CRUD)
-function handleCities($method, $endpoint, $db) {
-    switch ($method) {
-        case 'GET':
-            // Получение всех городов
-            $sql = "SELECT * FROM locality ORDER BY town_ru";
-            $result = $db->query($sql);
+// ==================== ОБРАБОТЧИК ГОРОДОВ (MySQLi) ====================
+function handleCities($db) {
+    // Получение всех городов
+	$sql = "SELECT * FROM locality ORDER BY town_ru";
+	$result = $db->query($sql);
             
-            if (!$result) {
-                http_response_code(500);
-                echo json_encode(['error' => $db->error], JSON_UNESCAPED_UNICODE);
-                return;
-            }
+	if (!$result) {
+		http_response_code(500);
+		echo json_encode(['error' => $db->error], JSON_UNESCAPED_UNICODE);
+		return;
+	}
             
-            $cities = [];
-            while ($row = $result->fetch_assoc()) {
-                $cities[] = [
-                    'id' => (int)$row['id'],
-                    'town_ru' => $row['town_ru'],
-                    'town_en' => $row['town_en'] ?? '',
-                    'code' => $row['code']
-                ];
-            }
-            
-            echo json_encode(['data' => $cities], JSON_UNESCAPED_UNICODE);
-            break;
-            
-        case 'POST':
-            // Добавление нового города
-            $input = json_decode(file_get_contents('php://input'), true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid JSON'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            // Проверка обязательных полей
-            if (empty($input['town_ru']) || empty($input['code'])) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Missing required fields'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            // Присваиваем переменные
-            $town_ru = $input['town_ru'];
-            $town_en = $input['town_en'] ?? '';
-            $code = $input['code'];
-            
-            $stmt = $db->prepare("
-                INSERT INTO locality (town_ru, town_en, code) 
-                VALUES (?, ?, ?)
-            ");
-            
-            if (!$stmt) {
-                http_response_code(500);
-                echo json_encode(['error' => 'Prepare failed'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $stmt->bind_param('sss', $town_ru, $town_en, $code);
-            
-            if ($stmt->execute()) {
-                echo json_encode([
-                    'success' => true,
-                    'id' => $stmt->insert_id,
-                    'message' => 'City added successfully'
-                ], JSON_UNESCAPED_UNICODE);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => $stmt->error], JSON_UNESCAPED_UNICODE);
-            }
-            break;
-            
-        case 'PUT':
-            // Обновление города
-            if (!isset($endpoint[1]) || !is_numeric($endpoint[1])) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid city ID'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $id = (int)$endpoint[1];
-            $input = json_decode(file_get_contents('php://input'), true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid JSON'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            // Присваиваем переменные
-            $town_ru = $input['town_ru'];
-            $town_en = $input['town_en'] ?? '';
-            $code = $input['code'];
-            
-            $stmt = $db->prepare("
-                UPDATE locality 
-                SET town_ru = ?, town_en = ?, code = ?
-                WHERE id = ?
-            ");
-            
-            if (!$stmt) {
-                http_response_code(500);
-                echo json_encode(['error' => 'Prepare failed'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $stmt->bind_param('sssi', $town_ru, $town_en, $code, $id);
-            
-            if ($stmt->execute()) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'City updated successfully'
-                ], JSON_UNESCAPED_UNICODE);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => $stmt->error], JSON_UNESCAPED_UNICODE);
-            }
-            break;
-            
-        case 'DELETE':
-            // Удаление города
-            if (!isset($endpoint[1]) || !is_numeric($endpoint[1])) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid city ID'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $id = (int)$endpoint[1];
-            
-            // Проверяем, нет ли магазинов в этом городе
-            $checkStmt = $db->prepare("SELECT COUNT(*) as count FROM stores WHERE locality_id = ?");
-            $checkStmt->bind_param('i', $id);
-            $checkStmt->execute();
-            $result = $checkStmt->get_result();
-            $row = $result->fetch_assoc();
-            
-            if ($row['count'] > 0) {
-                http_response_code(400);
-                echo json_encode([
-                    'error' => 'Cannot delete city with existing stores. Delete stores first.'
-                ], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $stmt = $db->prepare("DELETE FROM locality WHERE id = ?");
-            $stmt->bind_param('i', $id);
-            
-            if ($stmt->execute()) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'City deleted successfully'
-                ], JSON_UNESCAPED_UNICODE);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => $stmt->error], JSON_UNESCAPED_UNICODE);
-            }
-            break;
-            
-        default:
-            http_response_code(405);
-            echo json_encode(['error' => 'Method not allowed'], JSON_UNESCAPED_UNICODE);
-            break;
-    }
+	$cities = [];
+	while ($row = $result->fetch_assoc()) {
+		$cities[] = $row;
+	}
+	
+	echo json_encode(['data' => $cities], JSON_UNESCAPED_UNICODE);
 }
 
-// ОБРАБОТКА КАТЕГОРИЙ (ПОЛНЫЙ CRUD)
-function handleCategories($method, $endpoint, $db) {
-    switch ($method) {
-        case 'GET':
-            // Получение всех категорий
-            $sql = "SELECT * FROM categories WHERE is_active = TRUE ORDER BY sort_order, name";
-            $result = $db->query($sql);
-            
-            if (!$result) {
-                http_response_code(500);
-                echo json_encode(['error' => $db->error], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $categories = [];
-            while ($row = $result->fetch_assoc()) {
-                $categories[] = [
-                    'id' => (int)$row['id'],
-                    'name' => $row['name'],
-                    'description' => $row['description'],
-                    'icon' => $row['icon'],
-                    'color' => $row['color'],
-                    'sort_order' => (int)$row['sort_order']
-                ];
-            }
-            
-            echo json_encode(['data' => $categories], JSON_UNESCAPED_UNICODE);
-            break;
-            
-        case 'POST':
-            // Добавление новой категории
-            $input = json_decode(file_get_contents('php://input'), true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid JSON'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            if (empty($input['name'])) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Category name is required'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            // Присваиваем переменные
-            $name = $input['name'];
-            $description = $input['description'] ?? '';
-            $icon = $input['icon'] ?? '📦';
-            $color = $input['color'] ?? '#007bff';
-            $sort_order = isset($input['sort_order']) ? (int)$input['sort_order'] : 100;
-            
-            $stmt = $db->prepare("
-                INSERT INTO categories (name, description, icon, color, sort_order) 
-                VALUES (?, ?, ?, ?, ?)
-            ");
-            
-            if (!$stmt) {
-                http_response_code(500);
-                echo json_encode(['error' => 'Prepare failed: ' . $db->error], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $stmt->bind_param('ssssi', $name, $description, $icon, $color, $sort_order);
-            
-            if ($stmt->execute()) {
-                echo json_encode([
-                    'success' => true,
-                    'id' => $stmt->insert_id,
-                    'message' => 'Category added successfully'
-                ], JSON_UNESCAPED_UNICODE);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => $stmt->error], JSON_UNESCAPED_UNICODE);
-            }
-            break;
-            
-        case 'PUT':
-            // Обновление категории
-            if (!isset($endpoint[1]) || !is_numeric($endpoint[1])) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid category ID'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $id = (int)$endpoint[1];
-            $input = json_decode(file_get_contents('php://input'), true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid JSON'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            // Присваиваем переменные
-            $name = $input['name'];
-            $description = $input['description'] ?? '';
-            $icon = $input['icon'] ?? '📦';
-            $color = $input['color'] ?? '#007bff';
-            $sort_order = isset($input['sort_order']) ? (int)$input['sort_order'] : 100;
-            $is_active = isset($input['is_active']) ? (int)$input['is_active'] : 1;
-            
-            $stmt = $db->prepare("
-                UPDATE categories 
-                SET name = ?, description = ?, icon = ?, color = ?, 
-                    sort_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            ");
-            
-            if (!$stmt) {
-                http_response_code(500);
-                echo json_encode(['error' => 'Prepare failed: ' . $db->error], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $stmt->bind_param('ssssiii', $name, $description, $icon, $color, $sort_order, $is_active, $id);
-            
-            if ($stmt->execute()) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Category updated successfully'
-                ], JSON_UNESCAPED_UNICODE);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => $stmt->error], JSON_UNESCAPED_UNICODE);
-            }
-            break;
-            
-        case 'DELETE':
-            // Удаление категории (мягкое удаление - деактивация)
-            if (!isset($endpoint[1]) || !is_numeric($endpoint[1])) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid category ID'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-            
-            $id = (int)$endpoint[1];
-            
-            // Проверяем, нет ли покупок в этой категории
-            $checkStmt = $db->prepare("SELECT COUNT(*) as count FROM shops WHERE category_id = ?");
-            $checkStmt->bind_param('i', $id);
-            $checkStmt->execute();
-            $result = $checkStmt->get_result();
-            $row = $result->fetch_assoc();
-            
-            if ($row['count'] > 0) {
-                // Не удаляем, а деактивируем
-                $stmt = $db->prepare("UPDATE categories SET is_active = FALSE WHERE id = ?");
-                $stmt->bind_param('i', $id);
-                
-                if ($stmt->execute()) {
-                    echo json_encode([
-                        'success' => true,
-                        'message' => 'Category deactivated (has existing purchases)'
-                    ], JSON_UNESCAPED_UNICODE);
-                } else {
-                    http_response_code(500);
-                    echo json_encode(['error' => $stmt->error], JSON_UNESCAPED_UNICODE);
-                }
-            } else {
-                // Удаляем полностью, если нет покупок
-                $stmt = $db->prepare("DELETE FROM categories WHERE id = ?");
-                $stmt->bind_param('i', $id);
-                
-                if ($stmt->execute()) {
-                    echo json_encode([
-                        'success' => true,
-                        'message' => 'Category deleted successfully'
-                    ], JSON_UNESCAPED_UNICODE);
-                } else {
-                    http_response_code(500);
-                    echo json_encode(['error' => $stmt->error], JSON_UNESCAPED_UNICODE);
-                }
-            }
-            break;
-            
-        default:
-            http_response_code(405);
-            echo json_encode(['error' => 'Method not allowed'], JSON_UNESCAPED_UNICODE);
-            break;
+// ==================== ОБРАБОТЧИК КАТЕГОРИЙ (MySQLi) ====================
+function handleCategories($db) {
+	$sql = "SELECT * FROM categories WHERE is_active = 1 ORDER BY sort_order, name";
+    $result = $db->query($sql);
+    
+    $categories = [];
+    while ($row = $result->fetch_assoc()) {
+        $categories[] = $row;
     }
+    
+    echo json_encode(['data' => $categories], JSON_UNESCAPED_UNICODE);
 }
 
-// ФУНКЦИЯ ДЛЯ АГРЕГАЦИИ КАТЕГОРИЙ
-// В api.php добавьте функцию с поддержкой фильтров:
+// ОБРАБОТКА СТАТИСТИКИ ПО КАТЕГОРИЯМ с поддержкой фильтров:
 function handleStatsCategories($method, $db) {
     if ($method !== 'GET') {
         http_response_code(405);
@@ -851,6 +194,7 @@ function handleStatsCategories($method, $db) {
         ];
     }
     
+	$data = $result->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode(['data' => $stats], JSON_UNESCAPED_UNICODE);
 }
 
@@ -866,5 +210,300 @@ function formatAddress($row) {
     }
     
     return $parts ? implode(', ', $parts) : 'Адрес не указан';
+}
+
+// ==================== ГЛАВНЫЙ ОБРАБОТЧИК ДЛЯ АНАЛИЗА ЦЕН (MySQLi) =================
+/**
+ * ПОЛУЧЕНИЕ ДАННЫХ ДЛЯ АНАЛИЗА ЦЕН ТОВАРА
+ * Параметры: 
+ *   - category_id (int) - ID категории
+ *   - product_name (string) - название товара
+ *   - characteristic (string, optional) - характеристика
+ *   - date_from (string, optional) - дата начала
+ *   - date_to (string, optional) - дата окончания
+ */
+function getProductPrices($db) {
+    try {
+        // Получаем параметры
+        $categoryId = isset($_GET['category_id']) ? intval($_GET['category_id']) : 0;
+        $productName = isset($_GET['product_name']) ? $db->real_escape_string($_GET['product_name']) : '';
+        $characteristic = isset($_GET['characteristic']) ? $db->real_escape_string($_GET['characteristic']) : null;
+        $dateFrom = isset($_GET['date_from']) ? $db->real_escape_string($_GET['date_from']) : null;
+        $dateTo = isset($_GET['date_to']) ? $db->real_escape_string($_GET['date_to']) : null;
+        
+        // Валидация
+        if (!$categoryId || !$productName) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Не указаны категория или название товара'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        
+        // --- 1. ПОЛУЧАЕМ ПОКУПКИ ---
+        $sql = "
+            SELECT 
+                s.id,
+                s.date,
+                s.name,
+                s.characteristic,
+                s.quantity,
+                s.item,
+                s.price,
+                s.amount,
+                s.store_id,
+                s.category_id,
+                st.shop as store_name,
+                c.name as category_name,
+                c.icon as category_icon
+            FROM shops s
+            LEFT JOIN stores st ON s.store_id = st.id
+            LEFT JOIN categories c ON s.category_id = c.id
+            WHERE s.category_id = $categoryId 
+                AND s.name = '$productName'
+        ";
+        
+        // Добавляем фильтры
+        if ($characteristic && $characteristic !== '') {
+            $sql .= " AND s.characteristic LIKE '%$characteristic%'";
+        }
+        
+        if ($dateFrom) {
+            $sql .= " AND s.date >= '$dateFrom'";
+        }
+        
+        if ($dateTo) {
+            $sql .= " AND s.date <= '$dateTo'";
+        }
+        
+        $sql .= " ORDER BY s.date ASC";
+        
+        $result = $db->query($sql);
+        
+        if (!$result) {
+            throw new Exception("Ошибка запроса: " . $db->error);
+        }
+        
+        $purchases = [];
+        while ($row = $result->fetch_assoc()) {
+            $purchases[] = $row;
+        }
+        
+        // --- 2. ПОЛУЧАЕМ УНИКАЛЬНЫЕ ХАРАКТЕРИСТИКИ ---
+        $charSql = "
+            SELECT DISTINCT characteristic
+            FROM shops
+            WHERE category_id = $categoryId 
+                AND name = '$productName'
+                AND characteristic IS NOT NULL
+                AND characteristic != ''
+            ORDER BY characteristic
+            LIMIT 50
+        ";
+        
+        $charResult = $db->query($charSql);
+        $characteristics = [];
+        if ($charResult) {
+            while ($row = $charResult->fetch_assoc()) {
+                $characteristics[] = $row['characteristic'];
+            }
+        }
+        
+        // --- 3. ИНФОРМАЦИЯ О КАТЕГОРИИ ---
+        $catResult = $db->query("SELECT name, icon, color FROM categories WHERE id = $categoryId");
+        $category = $catResult ? $catResult->fetch_assoc() : null;
+        
+        // --- 4. РАСЧЕТ СТАТИСТИКИ ---
+        $stats = calculatePriceStatsMysqli($purchases);
+        
+        // --- 5. ОТВЕТ ---
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'product' => [
+                    'name' => $productName,
+                    'category_id' => $categoryId,
+                    'category_name' => $category['name'] ?? '',
+                    'category_icon' => $category['icon'] ?? '📦',
+                    'category_color' => $category['color'] ?? '#007bff',
+                    'total_purchases' => count($purchases),
+                    'first_purchase' => !empty($purchases) ? $purchases[0]['date'] : null,
+                    'last_purchase' => !empty($purchases) ? $purchases[count($purchases)-1]['date'] : null,
+                    'characteristics' => $characteristics
+                ],
+                'purchases' => $purchases,
+                'statistics' => $stats
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+        
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    }
+}
+
+/**
+ * Получение информации о категории товара
+ */
+function getProductInfo($db, $categoryId, $productName) {
+    try {
+        $sql = "
+            SELECT 
+                c.name as category_name,
+                c.icon as category_icon,
+                c.color as category_color
+            FROM categories c
+            WHERE c.id = :category_id
+        ";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute([':category_id' => $categoryId]);
+        $category = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Получаем все характеристики этого товара
+        $sql = "
+            SELECT DISTINCT characteristic
+            FROM shops
+            WHERE category_id = :category_id 
+                AND name = :product_name
+                AND characteristic IS NOT NULL
+                AND characteristic != ''
+            ORDER BY characteristic
+            LIMIT 50
+        ";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            ':category_id' => $categoryId,
+            ':product_name' => $productName
+        ]);
+        $characteristics = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        return [
+            'category_name' => $category['category_name'] ?? null,
+            'category_icon' => $category['category_icon'] ?? '📦',
+            'category_color' => $category['category_color'] ?? '#007bff',
+            'characteristics' => $characteristics
+        ];
+        
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+// ==================== СТАТИСТИКА ДЛЯ MySQLi ====================
+function calculatePriceStatsMysqli($purchases) {
+    if (empty($purchases)) {
+        return [
+            'count' => 0,
+            'min_price' => 0,
+            'max_price' => 0,
+            'avg_price' => 0,
+            'first_price' => 0,
+            'last_price' => 0,
+            'change_amount' => 0,
+            'change_percent' => 0,
+            'trend' => 'stable',
+            'trend_emoji' => '➡️',
+            'total_amount' => 0,
+            'total_quantity' => 0,
+            'has_normalized' => false
+        ];
+    }
+    
+    $prices = [];
+    $quantities = [];
+    $amounts = [];
+    
+    foreach ($purchases as $p) {
+        $prices[] = floatval($p['price']);
+        $quantities[] = floatval($p['quantity']);
+        $amounts[] = floatval($p['amount']);
+    }
+    
+    $min_price = min($prices);
+    $max_price = max($prices);
+    $avg_price = array_sum($prices) / count($prices);
+    $first_price = $prices[0];
+    $last_price = $prices[count($prices) - 1];
+    
+    $change_amount = $last_price - $first_price;
+    $change_percent = $first_price > 0 ? ($change_amount / $first_price) * 100 : 0;
+    
+    // Тренд
+    if ($change_percent > 5) {
+        $trend = 'rising';
+        $trend_emoji = '📈';
+    } elseif ($change_percent < -5) {
+        $trend = 'falling';
+        $trend_emoji = '📉';
+    } else {
+        $trend = 'stable';
+        $trend_emoji = '➡️';
+    }
+    
+    // Проверка на нормализацию
+    $has_normalized = false;
+    $normalized_prices = [];
+    $normalized_unit = null;
+    
+    foreach ($purchases as $p) {
+        if (in_array($p['item'], ['г', 'мл', 'см'])) {
+            $has_normalized = true;
+            $normalized = normalizePriceMysqli($p['price'], $p['quantity'], $p['item']);
+            if ($normalized['normalized']) {
+                $normalized_prices[] = $normalized['price_per_unit'];
+                $normalized_unit = $normalized['normalized_unit'];
+            }
+        }
+    }
+    
+    return [
+        'count' => count($purchases),
+        'min_price' => round($min_price, 2),
+        'max_price' => round($max_price, 2),
+        'avg_price' => round($avg_price, 2),
+        'first_price' => round($first_price, 2),
+        'last_price' => round($last_price, 2),
+        'change_amount' => round($change_amount, 2),
+        'change_percent' => round($change_percent, 1),
+        'trend' => $trend,
+        'trend_emoji' => $trend_emoji,
+        'total_amount' => round(array_sum($amounts), 2),
+        'total_quantity' => round(array_sum($quantities), 3),
+        'has_normalized' => $has_normalized,
+        'normalized_avg' => !empty($normalized_prices) ? round(array_sum($normalized_prices) / count($normalized_prices), 2) : null,
+        'normalized_unit' => $normalized_unit
+    ];
+}
+
+// ==================== НОРМАЛИЗАЦИЯ ЦЕН ДЛЯ MySQLi ====================
+function normalizePriceMysqli($price, $quantity, $unit) {
+    $result = [
+        'original_price' => $price,
+        'original_quantity' => $quantity,
+        'original_unit' => $unit,
+        'price_per_unit' => $price,
+        'normalized_unit' => $unit,
+        'normalized' => false
+    ];
+    
+    switch ($unit) {
+        case 'г':
+            $result['price_per_unit'] = ($price * 1000) / $quantity;
+            $result['normalized_unit'] = 'кг';
+            $result['normalized'] = true;
+            break;
+        case 'мл':
+            $result['price_per_unit'] = ($price * 1000) / $quantity;
+            $result['normalized_unit'] = 'л';
+            $result['normalized'] = true;
+            break;
+        case 'см':
+            $result['price_per_unit'] = ($price * 100) / $quantity;
+            $result['normalized_unit'] = 'м';
+            $result['normalized'] = true;
+            break;
+    }
+    
+    return $result;
 }
 ?>
