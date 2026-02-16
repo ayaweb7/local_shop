@@ -504,187 +504,189 @@ class BaseChart {
     }
     
     /**
-     * Базовая конфигурация графика
+     * Базовая конфигурация графика с анимациями
      */
     getDefaultConfig() {
-        // Определяем тип графика для использования в конфигурации
-        const chartType = this.chartType || 'bar';
-        
-        // Проверяем, доступен ли плагин datalabels
-        const datalabelsPlugin = typeof ChartDataLabels !== 'undefined' ? ChartDataLabels : null;
-        if (datalabelsPlugin) {
-            try {
-                Chart.register(datalabelsPlugin);
-                console.log('Плагин DataLabels зарегистрирован');
-            } catch (e) {
-                console.warn('Не удалось зарегистрировать DataLabels:', e);
-            }
-        }
-        
-        // Базовый конфиг
-        const baseConfig = {
-            type: chartType,
-            data: {
-                labels: [],
-                datasets: []
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: {
-                    duration: 800,
-                    easing: 'easeInOutQuart',
-                    animateScale: true,
-                    animateRotate: true
-                },
-                layout: {
-                    padding: {
-                        top: 20,
-                        right: 20,
-                        bottom: 20,
-                        left: 20
-                    }
-                },
-                plugins: {
-                    // ПЛАГИН ПОДПИСЕЙ ДАННЫХ
-                    datalabels: datalabelsPlugin ? {
-                        display: true, // По умолчанию включены
-                        color: '#333',
-                        font: {
-                            family: this.theme.typography.fontFamily,
-                            size: 11,
-                            weight: 'bold'
-                        },
-                        formatter: (value, context) => {
-                            return this.formatDataLabel(value, context, chartType);
-                        },
-                        anchor: 'end',
-                        align: 'top',
-                        offset: 4,
-                        clamp: true,
-                        textAlign: 'center',
-                        // Конфигурация для разных типов графиков
-                        ...this.getDataLabelsConfig(chartType)
-                    } : undefined,
-                    
-                    // Легенда
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            padding: 15,
-                            usePointStyle: true,
-                            pointStyle: 'circle',
-                            font: {
-                                family: this.theme.typography.fontFamily,
-                                size: this.theme.typography.fontSize
-                            }
-                        }
-                    },
-                    
-                    // Всплывающие подсказки
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        titleFont: {
-                            family: this.theme.typography.fontFamily,
-                            size: this.theme.typography.fontSize,
-                            weight: 'bold'
-                        },
-                        bodyFont: {
-                            family: this.theme.typography.fontFamily,
-                            size: this.theme.typography.fontSize
-                        },
-                        padding: 12,
-                        cornerRadius: 8,
-                        displayColors: true,
-                        boxPadding: 6,
-                        callbacks: {
-                            label: (context) => {
-                                const label = context.dataset.label || '';
-                                const value = context.raw || 0;
-                                const total = context.chart.data.datasets[0]?.data?.reduce((a, b) => a + b, 0) || 0;
-                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                
-                                let formattedValue;
-                                if (label.toLowerCase().includes('сумма') || 
-                                    label.toLowerCase().includes('руб') ||
-                                    label.toLowerCase().includes('₽')) {
-                                    formattedValue = ChartUtils.formatCurrency(value);
-                                } else {
-                                    formattedValue = ChartUtils.formatNumber(value, 0);
-                                }
-                                
-                                return [
-                                    `${label}: ${formattedValue}`,
-                                    `Доля: ${percentage}%`,
-                                    `Позиция: ${context.dataIndex + 1}/${context.chart.data.labels.length}`
-                                ];
-                            }
-                        }
-                    }
-                },
-                // Настройки для разных типов графиков
-                ...this.getTypeSpecificConfig(chartType)
-            }
-        };
-        
-        // Добавляем оси для соответствующих типов графиков
-        if (chartType !== 'pie' && chartType !== 'doughnut') {
-            baseConfig.options.scales = {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: (value) => ChartUtils.formatCurrency(value),
-                        font: {
-                            family: this.theme.typography.fontFamily,
-                            size: 11
-                        }
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)',
-                        drawBorder: false
-                    }
-                },
-                x: {
-                    ticks: {
-                        font: {
-                            family: this.theme.typography.fontFamily,
-                            size: 11
-                        },
-                        maxRotation: 45
-                    },
-                    grid: {
-                        display: false
-                    }
-                }
-            };
-            
-            // Дополнительные настройки для горизонтальных гистограмм
-            if (chartType === 'horizontalBar') {
-                baseConfig.options.indexAxis = 'y';
-                baseConfig.options.scales = {
-                    x: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: (value) => ChartUtils.formatCurrency(value)
-                        }
-                    },
-                    y: {
-                        ticks: {
-                            autoSkip: false,
-                            font: {
-                                size: 11
-                            }
-                        },
-                        grid: {
-                            display: false
-                        }
-                    }
-                };
-            }
-        }
-        
-        return baseConfig;
-    }
+		return {
+			type: this.chartType || 'bar',
+			data: { labels: [], datasets: [] },
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				
+				// ===== АНИМАЦИИ =====
+				animation: {
+					duration: 800,                    // Длительность анимации
+					easing: 'easeInOutQuart',         // Функция плавности
+					
+					// Анимация для всех типов графиков
+					animateScale: true,                // Масштабирование при появлении
+					animateRotate: true,               // Вращение для круговых
+					
+					// Колбэки для отладки
+					onProgress: (animation) => {
+						// Можно добавить индикатор загрузки
+					},
+					onComplete: (animation) => {
+						console.log('Анимация завершена');
+					}
+				},
+				
+				// Анимация переходов при обновлении данных
+				transitions: {
+					active: {
+						animation: {
+							duration: 400
+						}
+					},
+					resize: {
+						animation: {
+							duration: 0  // Отключаем анимацию при ресайзе
+						}
+					}
+				},
+				
+				// ===== ЭФФЕКТЫ ПРИ НАВЕДЕНИИ =====
+				hover: {
+					mode: 'nearest',
+					intersect: true,
+					animationDuration: 200  // Плавность при наведении
+				},
+				
+				// ===== НАСТРОЙКИ ЭЛЕМЕНТОВ =====
+				elements: {
+					// Для столбчатых диаграмм
+					bar: {
+						backgroundColor: 'rgba(52, 152, 219, 0.8)',
+						borderColor: '#2980b9',
+						borderWidth: 1,
+						borderRadius: 4,                // Скругленные углы
+						hoverBackgroundColor: '#3498db',
+						hoverBorderColor: '#2980b9',
+						hoverBorderWidth: 2
+					},
+					
+					// Для линейных графиков
+					line: {
+						tension: 0.3,                   // Сглаживание линий
+						borderWidth: 2,
+						borderColor: '#3498db',
+						backgroundColor: 'transparent',
+						fill: false,
+						hoverBorderWidth: 3
+					},
+					
+					// Для точек на линиях
+					point: {
+						radius: 3,
+						hoverRadius: 5,
+						backgroundColor: '#3498db',
+						hoverBackgroundColor: '#e74c3c',
+						borderWidth: 1,
+						hoverBorderWidth: 2
+					},
+					
+					// Для круговых диаграмм
+					arc: {
+						backgroundColor: '#3498db',
+						borderColor: '#fff',
+						borderWidth: 2,
+						hoverBackgroundColor: '#e74c3c',
+						hoverBorderColor: '#fff',
+						hoverBorderWidth: 3,
+						hoverOffset: 8                     // Смещение при наведении
+					}
+				},
+				
+				// ===== ПЛАВНЫЕ ТУЛТИПЫ =====
+				plugins: {
+					tooltip: {
+						enabled: true,
+						mode: 'index',
+						intersect: false,
+						animation: {
+							duration: 200,
+							easing: 'easeOutCubic'
+						},
+						backgroundColor: 'rgba(0, 0, 0, 0.8)',
+						titleColor: '#fff',
+						bodyColor: '#fff',
+						borderColor: '#3498db',
+						borderWidth: 2,
+						padding: 10,
+						cornerRadius: 6,
+						titleFont: { size: 14, weight: 'bold' },
+						bodyFont: { size: 13 }
+					},
+					
+					// Анимированные подписи данных
+					datalabels: {
+						display: true,
+						color: '#333',
+						font: { size: 11, weight: 'bold' },
+						anchor: 'end',
+						align: 'top',
+						offset: 4,
+						
+						// Анимация подписей
+						animation: {
+							duration: 300,
+							easing: 'easeOutQuad'
+						}
+					},
+					
+					// Анимированная легенда
+					legend: {
+						display: true,
+						position: 'top',
+						labels: {
+							usePointStyle: true,
+							pointStyle: 'circle',
+							padding: 15,
+							font: { size: 12 },
+							
+							// Анимация при наведении на легенду
+							generateLabels: (chart) => {
+								const labels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+								
+								labels.forEach(label => {
+									label.hiddenStyle = {
+										backgroundColor: 'rgba(0,0,0,0.2)',
+										borderColor: 'rgba(0,0,0,0.2)'
+									};
+								});
+								
+								return labels;
+							}
+						},
+						
+						// Плавное скрытие/показ
+						onClick: (e, legendItem, legend) => {
+							const index = legendItem.datasetIndex;
+							const ci = legend.chart;
+							
+							// Плавное скрытие с анимацией
+							ci.setDatasetVisibility(index, !ci.isDatasetVisible(index));
+							ci.update({
+								duration: 400,
+								easing: 'easeInOutQuad'
+							});
+						}
+					}
+				},
+				
+				// ===== ПРОЧИЕ НАСТРОЙКИ =====
+				layout: {
+					padding: {
+						top: 30,
+						right: 20,
+						bottom: 20,
+						left: 20
+					}
+				}
+			}
+		};
+	}
 	
 	/**
      * Форматирование подписи данных
@@ -3576,46 +3578,70 @@ class ChartPair {
     }
     
     /**
-     * Создание пары графиков
+     * Создание пары графиков с анимацией
      */
-    create(dataPair, customOptions = {}) {
-        const options = { ...this.config, ...customOptions };
-        
-        // Уничтожаем старые графики
-        this.destroy();
+	create(dataPair, customOptions = {}) {
+		const options = { ...this.config, ...customOptions };
 		
-		// Также удаляем из chartManager
-		chartManager.destroyChart(this.leftCanvasId);
-		chartManager.destroyChart(this.rightCanvasId);
-        
-        // Левый график - сумма
-        if (options.showAmount && dataPair.amountData) {
-            const chartOptions = this._getChartOptions('left', options);
-            this.leftChart = this._createSingleChart(
-                this.leftCanvasId, 
-                dataPair.amountData, 
-                chartOptions
-            );
-            
-            // Обновляем заголовок
-            this._updateChartTitle(this.leftCanvasId, options.leftTitle);
-        }
-        
-        // Правый график - количество
-        if (options.showCount && dataPair.countData) {
-            const chartOptions = this._getChartOptions('right', options);
-            this.rightChart = this._createSingleChart(
-                this.rightCanvasId, 
-                dataPair.countData, 
-                chartOptions
-            );
-            
-            // Обновляем заголовок
-            this._updateChartTitle(this.rightCanvasId, options.rightTitle);
-        }
-        
-        return { left: this.leftChart, right: this.rightChart };
-    }
+		// Добавляем эффект "затухания" старых графиков
+		this.fadeOutOldCharts();
+		
+		// Уничтожаем старые графики
+		this.destroy();
+		
+		// Небольшая задержка для визуального эффекта
+		setTimeout(() => {
+			// Создаем новые графики
+			if (options.showAmount && dataPair.amountData) {
+				const chartOptions = this._getChartOptions('left', options);
+				
+				// Добавляем CSS класс для анимации появления
+				const canvas = document.getElementById(this.leftCanvasId);
+				if (canvas) {
+					canvas.classList.add('chart-appear');
+					setTimeout(() => canvas.classList.remove('chart-appear'), 1000);
+				}
+				
+				this.leftChart = this._createSingleChart(this.leftCanvasId, dataPair.amountData, chartOptions);
+				this._updateChartTitle(this.leftCanvasId, options.leftTitle);
+			}
+			
+			// Аналогично для правого графика
+			if (options.showCount && dataPair.countData) {
+				const chartOptions = this._getChartOptions('right', options);
+				
+				const canvas = document.getElementById(this.rightCanvasId);
+				if (canvas) {
+					canvas.classList.add('chart-appear');
+					setTimeout(() => canvas.classList.remove('chart-appear'), 1000);
+				}
+				
+				this.rightChart = this._createSingleChart(this.rightCanvasId, dataPair.countData, chartOptions);
+				this._updateChartTitle(this.rightCanvasId, options.rightTitle);
+			}
+		}, 150); // Задержка для эффекта
+		
+		return { left: this.leftChart, right: this.rightChart };
+	}
+
+	/**
+	 * Плавное затухание старых графиков
+	 */
+	fadeOutOldCharts() {
+		const leftCanvas = document.getElementById(this.leftCanvasId);
+		const rightCanvas = document.getElementById(this.rightCanvasId);
+		
+		[leftCanvas, rightCanvas].forEach(canvas => {
+			if (canvas) {
+				canvas.style.transition = 'opacity 0.3s ease';
+				canvas.style.opacity = '0';
+				
+				setTimeout(() => {
+					canvas.style.opacity = '1';
+				}, 300);
+			}
+		});
+	}
     
     /**
      * Создание одиночного графика

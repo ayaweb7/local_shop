@@ -1182,6 +1182,121 @@ function clearChartFilter() {
     console.log('Фильтр очищен');
 }
 
+// ============================================
+// ПРОГРЕСС-БАР ДЛЯ ЭКСПОРТА БОЛЬШИХ ДАННЫХ
+// ============================================
+// Прогресс-бар для больших экспортов
+class ExportProgressBar {
+    constructor() {
+        this.element = null;
+    }
+    
+    show(total) {
+        if (this.element) this.hide();
+        
+        this.element = document.createElement('div');
+        this.element.className = 'export-progress';
+        this.element.innerHTML = `
+            <div class="progress-container">
+                <div class="progress-header">Экспорт данных</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="progress-stats">
+                    <span class="progress-count">0/${total}</span>
+                    <span class="progress-percent">0%</span>
+                </div>
+            </div>
+        `;
+        
+        // Стили
+        const style = document.createElement('style');
+        style.textContent = `
+            .export-progress {
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                background: white;
+                border-radius: 10px;
+                padding: 15px;
+                box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+                z-index: 10001;
+                min-width: 300px;
+            }
+            
+            .progress-container {
+                width: 100%;
+            }
+            
+            .progress-header {
+                font-weight: bold;
+                margin-bottom: 10px;
+                color: #2c3e50;
+            }
+            
+            .progress-bar {
+                height: 20px;
+                background: #ecf0f1;
+                border-radius: 10px;
+                overflow: hidden;
+                margin-bottom: 8px;
+            }
+            
+            .progress-fill {
+                height: 100%;
+                background: linear-gradient(90deg, #3498db, #2ecc71);
+                transition: width 0.3s ease;
+                border-radius: 10px;
+            }
+            
+            .progress-stats {
+                display: flex;
+                justify-content: space-between;
+                font-size: 12px;
+                color: #7f8c8d;
+            }
+        `;
+        
+        document.head.appendChild(style);
+        document.body.appendChild(this.element);
+        
+        this.element.total = total;
+    }
+    
+    update(current) {
+        if (!this.element) return;
+        
+        const total = this.element.total;
+        const percent = Math.round((current / total) * 100);
+        
+        const fill = this.element.querySelector('.progress-fill');
+        const count = this.element.querySelector('.progress-count');
+        const percentEl = this.element.querySelector('.progress-percent');
+        
+        if (fill) fill.style.width = percent + '%';
+        if (count) count.textContent = `${current}/${total}`;
+        if (percentEl) percentEl.textContent = percent + '%';
+        
+        if (current >= total) {
+            setTimeout(() => this.hide(), 1000);
+        }
+    }
+    
+    hide() {
+        if (this.element) {
+            this.element.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                if (this.element && this.element.parentNode) {
+                    this.element.parentNode.removeChild(this.element);
+                    this.element = null;
+                }
+            }, 300);
+        }
+    }
+}
+
+// Использование
+const progressBar = new ExportProgressBar();
 
 
 // ЗАПУСК ПРИЛОЖЕНИЯ

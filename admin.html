@@ -18,9 +18,14 @@
                 <button id="categories-tab" class="tab-button">Категории</button>
 				<button id="back-to-app" class="secondary">← К приложению</button>
                 <button id="logout-btn" class="secondary">Выйти</button>
+				<!-- Кнопка экспорта справочников -->
+				<button id="export-categories" class="btn-export" onclick="exportCategories()">
+					📥 Экспорт категорий
+				</button>
             </nav>
         </header>
-
+		
+		<!-- Управление магазинами -->
         <div id="shops-section" class="tab-content active">
             <h2>Управление магазинами</h2>
             <div class="controls">
@@ -28,7 +33,8 @@
             </div>
             <div id="shops-table"></div>
         </div>
-
+		
+		<!-- Управление городами -->
         <div id="cities-section" class="tab-content">
             <h2>Управление городами</h2>
             <div class="controls">
@@ -37,6 +43,7 @@
             <div id="cities-table"></div>
         </div>
 		
+		<!-- Управление категориями -->
 		<div id="categories-section" class="tab-content">
 			<h2>Управление категориями</h2>
 			<div class="controls">
@@ -134,5 +141,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tabulator/5.4.4/js/tabulator.min.js"></script>
     <script src="js/api.js"></script>
 	<script src="js/admin.js"></script>
+	
+	<script>
+		function exportCategories() {
+			const categories = window.categoriesData || [];
+			
+			dataExporter.export(categories, {
+				format: 'csv',
+				filename: 'categories',
+				separator: ';'
+			});
+		}
+</script>
 </body>
 </html>

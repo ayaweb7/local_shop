@@ -7,18 +7,23 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head>
 <body>
-  <div class="auth-container">
-    <h1>Трекер Покупок</h1>
-    <div id="login-form">
-      <h2>Вход в систему</h2>
-      <input type="email" id="email" placeholder="Email">
-      <input type="password" id="password" placeholder="Пароль">
-      <button onclick="handleLogin()">Войти</button>
-      <p id="auth-message"></p>
-    </div>
-  </div>
-  <script src="api.js"></script>
-  <script src="app.js"></script>
+	<div class="auth-container">
+		<!-- Добавьте анимированный заголовок -->
+		<div class="animated-title">
+			<h1>🛒 Трекер Покупок</h1>
+			<div class="title-underline"></div>
+		</div>
+		<div id="login-form">
+			<h2>Вход в систему</h2>
+			<input type="email" id="email" placeholder="Email">
+			<input type="password" id="password" placeholder="Пароль">
+			<button onclick="handleLogin()">Войти</button>
+			<p id="auth-message"></p>
+		</div>
+	</div>
+	
+	<script src="api.js"></script>
+	<script src="app.js"></script>
   
 </body>
 </html>

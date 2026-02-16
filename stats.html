@@ -5,40 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Статистика покупок - Shopping Tracker</title>
     <link rel="stylesheet" href="css/styles.css">
-    <style>
-        .main-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #e9ecef;
-        }
-        
-        .page-actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .stats-section {
-            margin-bottom: 30px;
-        }
-        
-        .section-title {
-            font-size: 1.3rem;
-            margin-bottom: 15px;
-            color: #333;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-    </style>
+    
 </head>
 <body>
     <div class="main-container">
@@ -55,6 +22,10 @@
                 <button onclick="refreshStats()" class="btn-secondary">
                     🔄 Обновить
                 </button>
+				<!-- Кнопка экспорта статистики -->
+				<button id="export-stats" class="btn-export" onclick="exportStats()">
+					📥 Экспорт статистики
+				</button>
             </div>
         </header>
         
@@ -176,6 +147,22 @@
         
         // Загружаем статистику при загрузке страницы
         document.addEventListener('DOMContentLoaded', loadStats);
+		
+		// Экспорт статистики
+		function exportStats() {
+			const statsData = window.statsTable?.getData() || [];
+			
+			if (statsData.length === 0) {
+				alert('Нет данных для экспорта');
+				return;
+			}
+			
+			dataExporter.export(statsData, {
+				format: 'csv',
+				filename: 'shopping_stats',
+				separator: ';'
+			});
+		}
     </script>
 </body>
 </html>
