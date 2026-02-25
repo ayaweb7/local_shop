@@ -7,7 +7,21 @@
 	<!-- <script src="js/chart.min.js"></script> -->
     <script src="js/api.js"></script><!--  -->
 	<!-- Chart.js DataLabels плагин -->
-	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script><!--  -->
+	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+	<script>
+		// Регистрируем плагин глобально, если он еще не зарегистрирован
+		if (window.Chart && Chart.register) {
+			Chart.register(ChartDataLabels);
+			console.log('ChartDataLabels plugin registered');
+			// По умолчанию отключаем, чтобы не мешал, пока пользователь не включит
+			Chart.defaults.plugins.datalabels = {
+				display: false
+			};
+		} else {
+			console.error('ChartDataLabels plugin could not be registered');
+		}
+	</script>
+	<!-- Затем ваш charts.js -->
 	<script src="js/charts.js"></script>
 	<!-- Подключаем менеджер анимаций -->
 	<script src="js/chart-animations.js"></script>
@@ -609,13 +623,18 @@
 		function createMonthlyCharts(purchases) {
 			console.log('Создание графиков по месяцам, тип:', currentViewType);
 			
+			// Определяем, какой тип графика допустим для месяцев
+			let allowedType = currentViewType;
+			// Для месяцев не подходят круговые и кольцевые
+			// if (allowedType === 'pie' || allowedType === 'doughnut') {
+			// 	allowedType = 'bar'; // По умолчанию вертикальная
+			// }
+			
 			chartManager.createMonthlyPair(
 				{ left: 'left-chart', right: 'right-chart' },
 				purchases,
-				window.chartData.months,
 				{
-					type: currentViewType // Используем выбранный тип
-					// dataType: 'months' Важно для фильтрации!
+					type: allowedType
 				}
 			);
 		}
@@ -623,13 +642,16 @@
 		function createYearlyCharts(purchases) {
 			console.log('Создание графиков по годам, тип:', currentViewType);
 			
+			let allowedType = currentViewType;
+			// if (allowedType === 'pie' || allowedType === 'doughnut') {
+			// 	allowedType = 'bar';
+			// }
+			
 			chartManager.createYearlyPair(
 				{ left: 'left-chart', right: 'right-chart' },
 				purchases,
-				window.chartData.years,
 				{
-					type: currentViewType // Используем выбранный тип
-					// dataType: 'years' Важно для фильтрации!
+					type: allowedType
 				}
 			);
 		}
@@ -660,13 +682,18 @@
 		function createProductCharts(purchases) {
 			console.log('Создание графиков по товарам, тип:', currentViewType);
 			
+			let allowedType = currentViewType;
+			// Для товаров лучше подходит горизонтальная
+			// if (allowedType === 'pie' || allowedType === 'doughnut' || allowedType === 'bar') {
+			// 	allowedType = 'horizontalBar';
+			// }
+			
 			chartManager.createProductPair(
 				{ left: 'left-chart', right: 'right-chart' },
 				purchases,
-				window.chartData.products,
+				// window.chartData.products,
 				{
-					type: currentViewType, // Используем выбранный тип
-					// dataType: 'products', Важно для фильтрации!
+					type: allowedType, // Используем выбранный тип
 					limit: 10 // ТОП-10 товаров
 				}
 			);
@@ -700,13 +727,59 @@
 			
 			labelsCheckbox.addEventListener('change', function() {
 				showDataLabels = this.checked;
-				updateDataLabels();
+				updateAllChartsDataLabels();
 			});
 			
 			percentagesCheckbox.addEventListener('change', function() {
 				showPercentages = this.checked;
-				updateDataLabels();
+				updateAllChartsDataLabels();
 			});
+		}
+		
+		// Обновление всех графиков
+		function updateAllChartsDataLabels() {
+			if (!window.chartManager) return;
+			
+			// Обновляем все графики
+			window.chartManager.charts.forEach((chart, canvasId) => {
+				updateChartDataLabels(chart);
+			});
+			
+			// Обновляем пары графиков
+			window.chartManager.chartPairs.forEach(pair => {
+				if (pair.leftChart) updateChartDataLabels(pair.leftChart);
+				if (pair.rightChart) updateChartDataLabels(pair.rightChart);
+			});
+		}
+		
+		// Проценты для круговых диаграмм
+		function updateChartDataLabels(chartInstance) {
+			if (!chartInstance || !chartInstance.chart) return;
+			
+			const chart = chartInstance.chart;
+			const config = chart.config;
+			
+			if (!config.options.plugins) config.options.plugins = {};
+			if (!config.options.plugins.datalabels) config.options.plugins.datalabels = {};
+			
+			// Обновляем видимость
+			config.options.plugins.datalabels.display = showDataLabels;
+			
+			// Для круговых диаграмм добавляем проценты
+			if (config.type === 'pie' || config.type === 'doughnut') {
+				config.options.plugins.datalabels.formatter = (value, context) => {
+					if (showPercentages) {
+						const total = context.dataset.data.reduce((a, b) => a + b, 0);
+						const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+						return percentage + '%';
+					} else {
+						// Округленное значение
+						return ChartUtils.formatCurrency(value, '', 0);
+					}
+				};
+			}
+			
+			chart.update();
 		}
 
 		function updateDataLabels() {

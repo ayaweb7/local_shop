@@ -19,8 +19,8 @@
 				<button id="back-to-app" class="secondary">← К приложению</button>
                 <button id="logout-btn" class="secondary">Выйти</button>
 				<!-- Кнопка экспорта справочников -->
-				<button id="export-categories" class="btn-export" onclick="exportCategories()">
-					📥 Экспорт категорий
+				<button id="export-current" class="btn-export" onclick="exportCurrentTab()">
+					📥 Экспорт текущей таблицы
 				</button>
             </nav>
         </header>
@@ -140,18 +140,39 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tabulator/5.4.4/js/tabulator.min.js"></script>
     <script src="js/api.js"></script>
+	<script src="js/data-exporter.js"></script>
 	<script src="js/admin.js"></script>
 	
 	<script>
-		function exportCategories() {
-			const categories = window.categoriesData || [];
+		// Функция экспорта для активной вкладки
+		function exportCurrentTab() {
+			let data = [];
+			let filename = '';
 			
-			dataExporter.export(categories, {
+			// Определяем, какая вкладка активна
+			if (document.getElementById('shops-section').classList.contains('active')) {
+				data = window.shopsData || [];
+				filename = 'shops';
+			} else if (document.getElementById('cities-section').classList.contains('active')) {
+				data = window.citiesData || [];
+				filename = 'cities';
+			} else if (document.getElementById('categories-section').classList.contains('active')) {
+				data = window.categoriesData || [];
+				filename = 'categories';
+			}
+			
+			if (data.length === 0) {
+				alert('Нет данных для экспорта');
+				return;
+			}
+			
+			dataExporter.export(data, {
 				format: 'csv',
-				filename: 'categories',
-				separator: ';'
+				filename: filename,
+				separator: ';',
+				headers: true
 			});
 		}
-</script>
+	</script>
 </body>
 </html>

@@ -160,6 +160,10 @@ class AdminPanel {
     }
 
     displayShopsTable(shops) {
+		
+		// Сохраняем данные для экспорта
+		window.shopsData = shops;
+	
         const container = document.getElementById('shops-table');
         if (!container) return;
         
@@ -204,6 +208,13 @@ class AdminPanel {
         
         container.appendChild(table);
     }
+	
+	// Поиск магазина по его ID
+	async findShopById(shopId) {
+		const response = await apiClient.request('stores', 'GET');
+		const shops = response.data || [];
+		return shops.find(s => s.id === shopId);
+	}
 
     // ФОРМА МАГАЗИНА
     // ПОКАЗАТЬ ФОРМУ МАГАЗИНА
@@ -273,7 +284,8 @@ class AdminPanel {
 		});
 	}
 
-    async saveShop() {
+    // Сохранение магазина
+	async saveShop() {
 		try {
 			const formData = {
 				shop: document.getElementById('shop-name').value.trim(),
@@ -283,16 +295,7 @@ class AdminPanel {
 				phone: document.getElementById('shop-phone').value.trim()
 			};
 			
-			console.log('Данные формы:', formData);
-			// Временно добавьте в начало saveShop()
-			console.log('Проверка полей:');
-			console.log('shop-name:', document.getElementById('shop-name')?.value);
-			console.log('shop-city:', document.getElementById('shop-city')?.value);
-			console.log('shop-street:', document.getElementById('shop-street')?.value);
-			console.log('shop-house:', document.getElementById('shop-house')?.value);
-			console.log('shop-phone:', document.getElementById('shop-phone')?.value);
-			
-			// ВАЛИДАЦИЯ
+			// Валидация
 			let isValid = true;
 			const errors = [];
 			
@@ -337,46 +340,34 @@ class AdminPanel {
 			let result;
 			
 			if (shopId) {
-				// Редактирование
-				console.log('Редактирование магазина ID:', shopId);
-				result = await apiClient.request(`stores/${shopId}`, 'PUT', formData);
+				// Редактирование - используем POST с id в теле
+				result = await apiClient.request(`stores`, 'POST', {
+					...formData,
+					id: parseInt(shopId)
+				});
 			} else {
 				// Добавление
-				console.log('Добавление нового магазина');
 				result = await apiClient.request('stores', 'POST', formData);
 			}
 			
-			if (result.success) {
-				this.showNotification(
-					shopId ? 'Магазин обновлён!' : 'Магазин добавлен!', 
-					'success'
-				);
-				
-				// Закрываем модальное окно
+			if (result && result.success) {
+				this.showNotification(shopId ? 'Магазин обновлён!' : 'Магазин добавлен!', 'success');
 				document.getElementById('shop-modal').style.display = 'none';
-				
-				// Обновляем данные
 				await this.loadShopsData();
-				await this.loadCitiesCache(); // Обновляем кэш
-				
 			} else {
-				throw new Error(result.error || 'Ошибка сохранения');
+				throw new Error(result?.error || 'Ошибка сохранения');
 			}
-			
 		} catch (error) {
 			console.error('Ошибка сохранения магазина:', error);
 			this.showNotification('Ошибка: ' + error.message, 'error');
 		}
 	}
 
-    async editShop(shopId) {
+    // Редактирование магазина
+	async editShop(shopId) {
 		try {
 			console.log('Редактирование магазина ID:', shopId);
-			
-			// Загружаем все магазины
-			const response = await apiClient.request('stores', 'GET');
-			const shops = response.data || [];
-			const shop = shops.find(s => s.id === shopId);
+			const shop = await this.findShopById(shopId);
 			
 			if (shop) {
 				console.log('Найден магазин:', shop);
@@ -384,7 +375,6 @@ class AdminPanel {
 			} else {
 				throw new Error('Магазин не найден');
 			}
-			
 		} catch (error) {
 			console.error('Ошибка загрузки магазина:', error);
 			this.showNotification('Ошибка: ' + error.message, 'error');
@@ -432,6 +422,10 @@ class AdminPanel {
     }
 
     displayCitiesTable(cities) {
+		
+		// Сохраняем данные для экспорта
+		window.citiesData = cities;
+		
         const container = document.getElementById('cities-table');
         if (!container) return;
         
@@ -474,109 +468,147 @@ class AdminPanel {
         
         container.appendChild(table);
     }
+	
+	// Поиск города по его ID
+	async findCityById(cityId) {
+		const response = await apiClient.request('cities', 'GET');
+		const cities = response.data || [];
+		return cities.find(c => c.id === cityId);
+	}
 
     // ФОРМА ГОРОДА
     showCityForm(city = null) {
-        const modal = this.createModal();
-        const isEdit = !!city;
-        
-        modal.innerHTML = `
-            <div class="modal-content">
-                <h3>${isEdit ? '✏️ Редактировать город' : '➕ Добавить город'}</h3>
-                <form id="city-form" class="admin-form">
-                    <input type="hidden" id="city-id" value="${city ? city.id : ''}">
-                    
-                    <div class="form-group">
-                        <label for="city-name-ru">Город (русский) *</label>
-                        <input type="text" id="city-name-ru" value="${city ? city.town_ru : ''}" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="city-name-en">Город (английский)</label>
-                        <input type="text" id="city-name-en" value="${city ? city.town_en : ''}">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="city-code">Код *</label>
-                        <input type="text" id="city-code" value="${city ? city.code : ''}" required maxlength="20">
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button type="submit" class="btn-primary">💾 Сохранить</button>
-                        <button type="button" class="btn-secondary cancel-btn">Отмена</button>
-                    </div>
-                </form>
-            </div>
-        `;
-        
-        // Добавляем обработчики
-        const form = modal.querySelector('#city-form');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.saveCity(city);
-        });
-        
-        modal.querySelector('.cancel-btn').addEventListener('click', () => {
-            modal.remove();
-        });
-    }
+		// Проверяем, существует ли уже модальное окно для города
+		let modal = document.getElementById('city-modal');
+		
+		if (!modal) {
+			// Создаем модальное окно, если его нет
+			modal = document.createElement('div');
+			modal.id = 'city-modal';
+			modal.className = 'modal';
+			modal.innerHTML = `
+				<div class="modal-content">
+					<span class="close-modal">&times;</span>
+					<h3 id="city-modal-title">Добавление города</h3>
+					<form id="city-form" class="admin-form">
+						<input type="hidden" id="city-id">
+						
+						<div class="form-group">
+							<label for="city-name-ru">Город (русский) *</label>
+							<input type="text" id="city-name-ru" required>
+						</div>
+						
+						<div class="form-group">
+							<label for="city-name-en">Город (английский)</label>
+							<input type="text" id="city-name-en">
+						</div>
+						
+						<div class="form-group">
+							<label for="city-code">Код *</label>
+							<input type="text" id="city-code" required maxlength="20">
+						</div>
+						
+						<div class="form-actions">
+							<button type="submit" class="btn-primary">💾 Сохранить</button>
+							<button type="button" id="cancel-city" class="btn-secondary">Отмена</button>
+						</div>
+					</form>
+				</div>
+			`;
+			document.body.appendChild(modal);
+			
+			// Добавляем обработчики
+			modal.querySelector('#city-form').addEventListener('submit', (e) => {
+				e.preventDefault();
+				this.saveCity();
+			});
+			
+			modal.querySelector('#cancel-city').addEventListener('click', () => {
+				modal.style.display = 'none';
+			});
+			
+			modal.querySelector('.close-modal').addEventListener('click', () => {
+				modal.style.display = 'none';
+			});
+			
+			window.addEventListener('click', (e) => {
+				if (e.target === modal) {
+					modal.style.display = 'none';
+				}
+			});
+		}
+		
+		const title = document.getElementById('city-modal-title');
+		const idField = document.getElementById('city-id');
+		const nameRuField = document.getElementById('city-name-ru');
+		const nameEnField = document.getElementById('city-name-en');
+		const codeField = document.getElementById('city-code');
+		
+		const isEdit = !!city;
+		title.textContent = isEdit ? '✏️ Редактировать город' : '➕ Добавить город';
+		
+		idField.value = city ? city.id : '';
+		nameRuField.value = city ? city.town_ru : '';
+		nameEnField.value = city ? city.town_en || '' : '';
+		codeField.value = city ? city.code : '';
+		
+		modal.style.display = 'block';
+	}
 
-    async saveCity(originalCity) {
-        try {
-            const formData = {
-                town_ru: document.getElementById('city-name-ru').value,
-                town_en: document.getElementById('city-name-en').value,
-                code: document.getElementById('city-code').value
-            };
-            
-            // Валидация
-            if (!formData.town_ru || !formData.code) {
-                this.showNotification('Заполните обязательные поля (отмечены *)', 'error');
-                return;
-            }
-            
-            const cityId = document.getElementById('city-id').value;
-            let result;
-            
-            if (cityId) {
-                // Редактирование
-                result = await apiClient.request(`cities/${cityId}`, 'PUT', formData);
-            } else {
-                // Добавление
-                result = await apiClient.request('cities', 'POST', formData);
-            }
-            
-            if (result.success) {
-                this.showNotification(
-                    cityId ? 'Город обновлён!' : 'Город добавлен!', 
-                    'success'
-                );
-                
-                // Закрываем модальное окно
-                document.querySelector('.modal-overlay')?.remove();
-                
-                // Обновляем данные
-                await this.loadCitiesData();
-                await this.loadCitiesCache(); // Обновляем кэш
-                
-            } else {
-                throw new Error(result.error || 'Ошибка сохранения');
-            }
-            
-        } catch (error) {
-            console.error('Ошибка сохранения города:', error);
-            this.showNotification('Ошибка: ' + error.message, 'error');
-        }
-    }
+    async saveCity() {
+		try {
+			const formData = {
+				town_ru: document.getElementById('city-name-ru').value.trim(),
+				town_en: document.getElementById('city-name-en').value.trim(),
+				code: document.getElementById('city-code').value.trim()
+			};
+			
+			// Валидация
+			if (!formData.town_ru || !formData.code) {
+				this.showNotification('Заполните обязательные поля (отмечены *)', 'error');
+				return;
+			}
+			
+			const cityId = document.getElementById('city-id').value;
+			let result;
+			
+			if (cityId) {
+				// Редактирование - используем POST с id в теле
+				result = await apiClient.request('cities', 'POST', {
+					...formData,
+					id: parseInt(cityId)
+				});
+			} else {
+				// Добавление
+				result = await apiClient.request('cities', 'POST', formData);
+			}
+			
+			if (result && result.success) {
+				this.showNotification(
+					cityId ? 'Город обновлён!' : 'Город добавлен!', 
+					'success'
+				);
+				
+				document.getElementById('city-modal').style.display = 'none';
+				
+				await this.loadCitiesData();
+			} else {
+				throw new Error(result.error || 'Ошибка сохранения');
+			}
+			
+		} catch (error) {
+			console.error('Ошибка сохранения города:', error);
+			this.showNotification('Ошибка: ' + error.message, 'error');
+		}
+	}
 
     async editCity(cityId) {
         try {
-            // Загружаем данные города
-            const response = await apiClient.request('cities', 'GET');
-            const cities = response.data || [];
-            const city = cities.find(c => c.id === cityId);
+            console.log('Редактирование города ID:', cityId);
+			const city = await this.findCityById(cityId);
             
             if (city) {
+				console.log('Найден город:', city);
                 this.showCityForm(city);
             } else {
                 throw new Error('Город не найден');
@@ -630,6 +662,10 @@ class AdminPanel {
 	}
 
 	displayCategoriesTable(categories) {
+		
+		// Сохраняем данные для экспорта
+		window.categoriesData = categories;
+		
 		const container = document.getElementById('categories-table');
 		if (!container) return;
 		
@@ -671,6 +707,13 @@ class AdminPanel {
 		`;
 		
 		container.appendChild(table);
+	}
+	
+	// Поиск категории по его ID
+	async findCategoryById(categoryId) {
+		const response = await apiClient.request('categories', 'GET');
+		const categories = response.data || [];
+		return categories.find(c => c.id === categoryId);
 	}
 
 	// ФОРМА КАТЕГОРИИ
@@ -716,14 +759,17 @@ class AdminPanel {
 			let result;
 			
 			if (categoryId) {
-				// Редактирование
-				result = await apiClient.request(`categories/${categoryId}`, 'PUT', formData);
+				// Редактирование - используем POST с id в теле
+				result = await apiClient.request(`categories`, 'POST', {
+					...formData,
+					id: parseInt(categoryId)
+				});
 			} else {
 				// Добавление
 				result = await apiClient.request('categories', 'POST', formData);
 			}
 			
-			if (result.success) {
+			if (result && result.success) {
 				this.showNotification(
 					categoryId ? 'Категория обновлена!' : 'Категория добавлена!', 
 					'success'
@@ -731,9 +777,8 @@ class AdminPanel {
 				
 				document.getElementById('category-modal').style.display = 'none';
 				await this.loadCategoriesData();
-				
 			} else {
-				throw new Error(result.error || 'Ошибка сохранения');
+				throw new Error(result?.error || 'Ошибка сохранения');
 			}
 			
 		} catch (error) {
@@ -744,11 +789,11 @@ class AdminPanel {
 
 	async editCategory(categoryId) {
 		try {
-			const response = await apiClient.request('categories', 'GET');
-			const categories = response.data || [];
-			const category = categories.find(c => c.id === categoryId);
+			console.log('Редактирование категории ID:', categoryId);
+			const category = await this.findCategoryById(categoryId);
 			
 			if (category) {
+				console.log('Найдена категория:', category);
 				this.showCategoryForm(category);
 			} else {
 				throw new Error('Категория не найдена');

@@ -1,4 +1,4 @@
-﻿// app.js - ИСПРАВЛЕННАЯ ВЕРСИЯ С Tabulator и API category-filter
+﻿// app.js - версия С Tabulator и API category-filter
 class ShoppingApp {
     constructor() {
         this.table = null;
@@ -23,22 +23,21 @@ class ShoppingApp {
             await this.loadAllCaches();
             
             // Инициализируем интерфейс
-            this.initializeTable();
+            this.initializeTable(); // Таблица инициализируется, но пока без данных
             this.setupEventListeners();
             this.initializePurchaseForm();
             
-            // Загружаем данные
-            await this.loadPurchasesData();
-            
+			// *** ИНИЦИАЛИЗИРУЕМ МЕНЕДЖЕРЫ ДО ЗАГРУЗКИ ДАННЫХ ***
             // Инициализируем менеджер фильтров
             this.initFilterManager();
-			
 			// Инициализируем менеджер статистики
 			this.initStatisticsManager();
 			
-			// Инициализируем информационную панель
+			// Загружаем данные (теперь менеджеры уже готовы)
+            await this.loadPurchasesData();
+            
+            // Инициализируем информационную панель
 			this.updateTableInfoPanel();
-
             
             console.log('ShoppingApp успешно инициализирован');
             
@@ -248,6 +247,9 @@ class ShoppingApp {
                     }
                 }
             });
+			
+			// *** ДЕЛАЕМ ТАБЛИЦУ ГЛОБАЛЬНОЙ ***
+			window.purchasesTable = this.table;
             
             console.log('Таблица Tabulator инициализирована');
             

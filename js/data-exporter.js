@@ -119,92 +119,130 @@ class DataExporter {
     /**
      * Экспорт в SQL (INSERT запросы)
      */
-    exportToSQL(data, options = {}) {
-        if (!data || data.length === 0) {
-            this.showNotification('Нет данных для экспорта', 'warning');
-            return null;
-        }
-        
-        const tableName = options.tableName || 'shops';
-        const batchSize = options.batchSize || 100;
-        
-        let sql = `-- Экспорт данных: ${new Date().toLocaleString()}\n`;
-        sql += `-- Таблица: ${tableName}\n`;
-        sql += `-- Записей: ${data.length}\n\n`;
-        
-        // Начало транзакции
-        sql += 'START TRANSACTION;\n\n';
-        
-        // Очистка таблицы (опционально)
-        if (options.truncateFirst) {
-            sql += `TRUNCATE TABLE ${tableName};\n\n`;
-        }
-        
-        // Получаем список полей из первой записи
-        const fields = Object.keys(data[0]);
-        
-        // Генерируем INSERT запросы батчами
-        for (let i = 0; i < data.length; i += batchSize) {
-            const batch = data.slice(i, i + batchSize);
-            
-            sql += `INSERT INTO ${tableName} (${fields.join(', ')}) VALUES\n`;
-            
-            const values = batch.map(row => {
-                return '(' + fields.map(field => {
-                    const value = row[field];
-                    
-                    if (value === null || value === undefined) {
-                        return 'NULL';
-                    }
-                    
-                    if (typeof value === 'number') {
-                        return value;
-                    }
-                    
-                    if (value instanceof Date) {
-                        return `'${value.toISOString().split('T')[0]}'`;
-                    }
-                    
-                    // Экранирование для SQL
-                    return `'${value.toString().replace(/'/g, "''")}'`;
-                }).join(', ') + ')';
-            });
-            
-            sql += values.join(',\n');
-            
-            if (i + batchSize < data.length) {
-                sql += ';\n\n';
-            } else {
-                sql += ';\n\n';
-            }
-        }
-        
-        // Завершение транзакции
-        sql += 'COMMIT;\n';
-        
-        this.downloadFile(sql, `${options.filename || 'export'}.sql`, 'application/sql');
-        
-        this.showNotification(`Экспортировано ${data.length} записей в SQL`, 'success');
-        
-        return sql;
-    }
+	exportToSQL(data, options = {}) {
+		if (!data || data.length === 0) {
+			this.showNotification('Нет данных для экспорта', 'warning');
+			return null;
+		}
+		
+		try {
+			const tableName = options.tableName || 'shops';
+			const batchSize = options.batchSize || 100;
+			
+			let sql = `-- Экспорт данных: ${new Date().toLocaleString()}\n`;
+			sql += `-- Таблица: ${tableName}\n`;
+			sql += `-- Записей: ${data.length}\n\n`;
+			
+			if (options.truncateFirst) {
+				sql += `TRUNCATE TABLE ${tableName};\n\n`;
+			}
+			
+			const fields = Object.keys(data[0]);
+			
+			for (let i = 0; i < data.length; i += batchSize) {
+				const batch = data.slice(i, i + batchSize);
+				sql += `INSERT INTO ${tableName} (${fields.join(', ')}) VALUES\n`;
+				
+				const values = batch.map(row => {
+					return '(' + fields.map(field => {
+						const value = row[field];
+						if (value === null || value === undefined) return 'NULL';
+						if (typeof value === 'number') return value;
+						if (value instanceof Date) return `'${value.toISOString().split('T')[0]}'`;
+						return `'${value.toString().replace(/'/g, "''")}'`;
+					}).join(', ') + ')';
+				});
+				
+				sql += values.join(',\n') + ';\n\n';
+			}
+			
+			// Создаем Blob с текстовым MIME-типом
+			const blob = new Blob([sql], { type: 'text/plain;charset=utf-8' });
+			const url = window.URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			
+			link.href = url;
+			link.download = `${options.filename || 'export'}.sql`;
+			document.body.appendChild(link);
+			link.click();
+			
+			setTimeout(() => {
+				document.body.removeChild(link);
+				window.URL.revokeObjectURL(url);
+			}, 100);
+			
+			this.showNotification(`Экспортировано ${data.length} записей в SQL`, 'success');
+			return sql;
+			
+		} catch (error) {
+			console.error('Ошибка экспорта SQL:', error);
+			this.showNotification('Ошибка экспорта: ' + error.message, 'error');
+			return null;
+		}
+	}
     
     /**
-     * Экспорт в XLS (через CSV)
+     * Экспорт в XLS (фактически CSV с расширением .xls)
      */
     exportToXLS(data, options = {}) {
-        // XLS по сути тот же CSV, но с другим расширением
-        options.filename = options.filename || 'export';
-        options.separator = options.separator || '\t'; // Табуляция для Excel
-        
-        const csv = this.exportToCSV(data, options);
-        if (csv) {
-            this.downloadFile(csv, `${options.filename}.xls`, 'application/vnd.ms-excel');
-            this.showNotification(`Экспортировано ${data.length} записей в XLS`, 'success');
-        }
-        
-        return csv;
-    }
+		if (!data || data.length === 0) {
+			this.showNotification('Нет данных для экспорта', 'warning');
+			return null;
+		}
+
+		try {
+			const separator = '\t';
+			const includeHeaders = options.headers !== false;
+			const headers = includeHeaders ? Object.keys(data[0]) : [];
+			
+			let content = '';
+			if (includeHeaders) {
+				content += headers.join(separator) + '\n';
+			}
+			
+			data.forEach(row => {
+				const rowData = headers.map(header => {
+					let value = row[header] ?? '';
+					if (typeof value === 'number') {
+						return value.toString().replace('.', ',');
+					}
+					if (value instanceof Date) {
+						return value.toISOString().split('T')[0];
+					}
+					// Экранирование для Excel
+					return `"${value.toString().replace(/"/g, '""')}"`;
+				});
+				content += rowData.join(separator) + '\n';
+			});
+
+			// Добавляем BOM для UTF-8
+			content = '\uFEFF' + content;
+
+			// Создаем Blob с правильным MIME-типом
+			const blob = new Blob([content], { type: 'application/vnd.ms-excel' });
+			const url = window.URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			
+			link.href = url;
+			link.download = `${options.filename || 'export'}.xls`;
+			document.body.appendChild(link);
+			link.click();
+			
+			// Очистка
+			setTimeout(() => {
+				document.body.removeChild(link);
+				window.URL.revokeObjectURL(url);
+			}, 100);
+			
+			this.showNotification(`Экспортировано ${data.length} записей в XLS`, 'success');
+			return content;
+			
+		} catch (error) {
+			console.error('Ошибка экспорта XLS:', error);
+			this.showNotification('Ошибка экспорта: ' + error.message, 'error');
+			return null;
+		}
+	}
     
     /**
      * Экранирование для CSV
@@ -232,7 +270,8 @@ class DataExporter {
         link.click();
         document.body.removeChild(link);
         
-        window.URL.revokeObjectURL(url);
+        // Важно: не сразу освобождать URL
+		setTimeout(() => window.URL.revokeObjectURL(url), 100);
     }
     
     /**

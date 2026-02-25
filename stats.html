@@ -89,6 +89,7 @@
     
     <!-- Подключение скриптов -->
     <script src="js/api.js"></script>
+	<script src="js/data-exporter.js"></script>
     <script src="js/stats.js"></script>
     <script>
         let statsData = [];
@@ -128,7 +129,8 @@
             loadStats();
         }
         
-        function exportStats(type) {
+        // Экспорт статистики
+		function exportStats(type) {
             if (window.statisticsManager) {
                 window.statisticsManager.exportToCSV(type);
             }
@@ -147,22 +149,6 @@
         
         // Загружаем статистику при загрузке страницы
         document.addEventListener('DOMContentLoaded', loadStats);
-		
-		// Экспорт статистики
-		function exportStats() {
-			const statsData = window.statsTable?.getData() || [];
-			
-			if (statsData.length === 0) {
-				alert('Нет данных для экспорта');
-				return;
-			}
-			
-			dataExporter.export(statsData, {
-				format: 'csv',
-				filename: 'shopping_stats',
-				separator: ';'
-			});
-		}
-    </script>
+	</script>
 </body>
 </html>

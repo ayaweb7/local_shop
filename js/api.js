@@ -77,7 +77,8 @@ class APIClient {
     }
 
     async deletePurchase(id) {
-        const result = await this.request(`purchases/${id}`, 'DELETE');
+        // Используем purchases/{id} в URL, а не параметр
+		const result = await this.request(`purchases/${id}`, 'DELETE');
         return result;
     }
 
@@ -136,8 +137,8 @@ class APIClient {
     }
 	
 	// В класс APIClient в api.js ДОБАВЬТЕ:
-	async updatePurchase(id, purchaseData) {
-		const result = await this.request(`purchases/${id}`, 'PUT', purchaseData);
+	async updatePurchase(id, data) {
+		const result = await this.request('purchases', 'PUT', { ...data, id: id });
 		return result;
 	}
 

@@ -1,6 +1,5 @@
 /**
  * Shopping Tracker - Enhanced Chart Manager
- * Полностью исправленная версия
  */
 
 // ============================================
@@ -17,9 +16,11 @@ class ChartUtils {
         }
         
         const num = parseFloat(value);
-        const [integerPart, decimalPart] = Math.abs(num).toFixed(2).split('.');
+		// Округляем до 2 знаков
+		const rounded = Math.round(num * 100) / 100;
+        const [integerPart, decimalPart] = Math.abs(rounded).toFixed(2).split('.');
         const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-        const sign = num < 0 ? '-' : '';
+        const sign = rounded < 0 ? '-' : '';
         
         return `${sign}${formattedInteger}.${decimalPart} ${currency}`;
     }
@@ -132,22 +133,21 @@ class ChartUtils {
 }
 
 // ============================================
-// 2. ТЕМЫ И ЦВЕТОВЫЕ ПАЛИТРЫ
+// 2. ТЕМЫ И ЦВЕТОВЫЕ ПАЛИТРЫ (УЛУЧШЕННАЯ ВЕРСИЯ)
 // ============================================
 
 class ChartThemes {
     static getDefaultTheme() {
         return {
-            // Основные цвета
             colors: {
-                primary: '#3498db',
-                secondary: '#2ecc71',
-                success: '#27ae60',
-                danger: '#e74c3c',
-                warning: '#f39c12',
-                info: '#17a2b8',
-                light: '#f8f9fa',
-                dark: '#343a40'
+                primary: '#3498db', // Первичный - яркий синий
+                secondary: '#2ecc71', // Вторичный - яркий зелёный
+                success: '#27ae60', // Успех - тёмный зелёный
+                danger: '#e74c3c', // Опасность - яркий красный
+                warning: '#f39c12', // Предупреждение - жёлтый
+                info: '#17a2b8', // Информация - синий
+                light: '#f8f9fa', // Светлый - светлый серый
+                dark: '#343a40' // Тёмный - тёмный серый
             },
             
             // Цветовая палитра для категорий
@@ -159,22 +159,97 @@ class ChartThemes {
                 '#3A0CA3', '#4361EE', '#4CC9F0', '#4895EF', '#560BAD'
             ],
             
+            // Специальные цвета для месяцев (по сезонам)
+            monthColors: {
+                // Зима (декабрь, январь, февраль) - оттенки синего
+                12: '#0000CD', // Декабрь - средний синий
+                1: '#4169E1',  // Январь - королевский синий
+                2: '#00BFFF',   // Февраль - морозное небо
+                
+                // Весна (март, апрель, май) - оттенки зеленого
+                3: '#98FB98',   // Март - бледный зелёный
+                4: '#008000',   // Апрель - зеленый
+                5: '#00FF00',   // Май - лайм
+                
+                // Лето (июнь, июль, август) - оттенки красного/оранжевого
+                6: '#FA8072',   // Июнь - лососевый
+                7: '#FF0000',   // Июль - красный
+                8: '#FFA500',   // Август - оранжевый
+                
+                // Осень (сентябрь, октябрь, ноябрь) - желто-коричневые
+                9: '#FF4500',   // Сентябрь - оранжево-красный
+                10: '#F0E68C',  // Октябрь - светлый хаки
+                11: '#BDB76B'   // Ноябрь - тёмный хаки
+            },
+            
+            // Цвета для годов (случайные, но предсказуемые)
+            yearColors: [
+                '#E74C3C', '#3498DB', '#2ECC71', '#F39C12', '#9B59B6',
+                '#1ABC9C', '#E67E22', '#27AE60', '#2980B9', '#8E44AD',
+                '#16A085', '#D35400', '#C0392B', '#7F8C8D', '#2C3E50'
+            ],
+            
             // Стили текста
             typography: {
                 fontFamily: "'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif",
                 fontSize: 12,
                 fontColor: '#333333'
-            },
-            
-            // Стили сетки
-            grid: {
-                color: 'rgba(0, 0, 0, 0.05)',
-                borderColor: 'rgba(0, 0, 0, 0.1)',
-                borderWidth: 1,
-                drawBorder: true,
-                drawOnChartArea: true
             }
         };
+    }
+    
+    /**
+     * Получение цвета для месяца по его номеру (1-12)
+     */
+    static getMonthColor(month) {
+        const theme = this.getDefaultTheme();
+        return theme.monthColors[month] || theme.palette[month % theme.palette.length];
+    }
+    
+    /**
+     * Получение цвета для года (стабильный, на основе года)
+     */
+    static getYearColor(year) {
+        const theme = this.getDefaultTheme();
+        // Используем год для индекса, чтобы цвет был стабильным для одного года
+        const index = (year * 7) % theme.yearColors.length;
+        return theme.yearColors[index];
+    }
+    
+    /**
+     * Получение цвета для категории
+     */
+    static getCategoryColor(categoryName, index = 0) {
+        const theme = this.getDefaultTheme();
+        
+        const fixedColors = {
+            'Авто': '#DC3545',
+			'Баня': '#6F42C1',
+            'Бензин': '#FFC107',
+            'БытоТехника': '#20C997',
+            'Ветряк': '#17A2B8',
+            'Дерево': '#F7F995',
+            'Инструмент': '#FD7E14',
+            'Коммуналка': '#E3FBC6',
+			'Лакокрасочные': '#E83E8C',
+            'Мебель': '#795548',
+            'Посуда': '#FF9FF3',
+            'Продукты': '#E7F98B',
+			'Расходники': '#DDECF9',
+			'Сад': '#2ECC71',
+			'Сантехника': '#3498DB',
+			'Собака': '#FFE7D1',
+			'Стройматериалы': '#95A5A6',
+			'Текстиль': '#9B59B6',
+			'Химия': '#1ABC9C',
+			'Электрика': '#F1C40F'
+        };
+        
+        if (categoryName && fixedColors[categoryName]) {
+            return fixedColors[categoryName];
+        }
+        
+        return theme.palette[index % theme.palette.length];
     }
     
     static getContrastTheme() {
@@ -192,32 +267,6 @@ class ChartThemes {
                 dark: '#202124'
             }
         };
-    }
-    
-    /**
-     * Получение цвета для категории
-     */
-    static getCategoryColor(categoryName, index = 0) {
-        const theme = this.getDefaultTheme();
-        
-        const fixedColors = {
-            'Продукты': '#FF6B6B',
-            'Химия': '#4ECDC4',
-            'Электроника': '#FFD166',
-            'Одежда': '#06D6A0',
-            'Бытовая техника': '#118AB2',
-            'Автотовары': '#EF476F',
-            'Стройматериалы': '#073B4C',
-            'Мебель': '#7209B7',
-            'Транспорт': '#F94144',
-            'Коммуналка': '#90BE6D'
-        };
-        
-        if (categoryName && fixedColors[categoryName]) {
-            return fixedColors[categoryName];
-        }
-        
-        return theme.palette[index % theme.palette.length];
     }
 }
 
@@ -279,7 +328,7 @@ class DataProcessor {
             labels: result.map(item => item.name),
             datasets: [{
                 label: 'Сумма покупок, ₽',
-                data: result.map(item => item.amount),
+                data: result.map(item => DataProcessor.roundAmount(item.amount)), // ОКРУГЛЕНИЕ
                 backgroundColor: result.map(item => item.color),
                 borderColor: result.map(item => ChartUtils.darkenColor(item.color, 0.2)),
                 borderWidth: 1
@@ -324,7 +373,7 @@ class DataProcessor {
             labels: sorted.map(item => item.name),
             datasets: [{
                 label: 'Сумма расходов, ₽',
-                data: sorted.map(item => item.amount),
+                data: result.map(item => DataProcessor.roundAmount(item.amount)), // ОКРУГЛЕНИЕ
                 backgroundColor: '#3498db',
                 borderColor: '#2980b9',
                 borderWidth: 1
@@ -365,7 +414,7 @@ class DataProcessor {
             labels: sorted.map(item => item.name),
             datasets: [{
                 label: 'Сумма покупок, ₽',
-                data: sorted.map(item => item.amount),
+                data: result.map(item => DataProcessor.roundAmount(item.amount)), // ОКРУГЛЕНИЕ
                 backgroundColor: sorted.map(item => item.color),
                 borderColor: sorted.map(item => ChartUtils.darkenColor(item.color, 0.2)),
                 borderWidth: 1
@@ -428,7 +477,7 @@ class DataProcessor {
             labels: sorted.map(item => item.name),
             datasets: [{
                 label: 'Сумма расходов, ₽',
-                data: sorted.map(item => item.amount),
+                data: result.map(item => DataProcessor.roundAmount(item.amount)), // ОКРУГЛЕНИЕ
                 backgroundColor: 'rgba(52, 152, 219, 0.1)',
                 borderColor: '#3498db',
                 borderWidth: 2,
@@ -437,6 +486,13 @@ class DataProcessor {
             }]
         };
     }
+	
+	/**
+     * Вспомогательный метод для округления чисел
+     */
+	static roundAmount(value) {
+		return Math.round(value * 100) / 100;
+	}
 }
 
 // ============================================
@@ -2591,6 +2647,9 @@ class UnifiedDataProcessor {
         
         // Преобразуем в массивы (уже отсортированы по месяцам)
         const items = Object.values(stats);
+		
+		// ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД ДЛЯ ЦВЕТОВ МЕСЯЦЕВ
+		const monthColors = items.map(item => ChartThemes.getMonthColor(item.month));
         
         // Формируем данные для amount (сумма)
         const amountData = {
@@ -2598,8 +2657,8 @@ class UnifiedDataProcessor {
             datasets: [{
                 label: 'Сумма расходов, ₽',
                 data: items.map(item => item.amount),
-                backgroundColor: '#3498db',
-                borderColor: '#2980b9',
+                backgroundColor: monthColors, // Разные цвета для каждого месяца
+				borderColor: monthColors.map(color => ChartUtils.darkenColor(color, 0.2)),
                 borderWidth: 1
             }]
         };
@@ -2610,8 +2669,8 @@ class UnifiedDataProcessor {
             datasets: [{
                 label: 'Количество покупок',
                 data: items.map(item => item.count),
-                backgroundColor: '#2ecc71',
-                borderColor: '#27ae60',
+                backgroundColor: monthColors, // Те же цвета
+				borderColor: monthColors.map(color => ChartUtils.darkenColor(color, 0.2)),
                 borderWidth: 1
             }]
         };
@@ -2648,14 +2707,17 @@ class UnifiedDataProcessor {
         // Сортируем по году
         const items = Object.values(stats).sort((a, b) => a.year - b.year);
         
+		// ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД ДЛЯ ЦВЕТОВ ГОДОВ
+		const yearColors = items.map(item => ChartThemes.getYearColor(item.year));
+		
         // Формируем данные
         const amountData = {
             labels: items.map(item => item.name),
             datasets: [{
                 label: 'Сумма расходов, ₽',
                 data: items.map(item => item.amount),
-                backgroundColor: '#e74c3c',
-                borderColor: '#c0392b',
+                backgroundColor: yearColors,
+				borderColor: yearColors.map(color => ChartUtils.darkenColor(color, 0.2)),
                 borderWidth: 1
             }]
         };
@@ -2665,8 +2727,8 @@ class UnifiedDataProcessor {
             datasets: [{
                 label: 'Количество покупок',
                 data: items.map(item => item.count),
-                backgroundColor: '#9b59b6',
-                borderColor: '#8e44ad',
+                backgroundColor: yearColors,
+				borderColor: yearColors.map(color => ChartUtils.darkenColor(color, 0.2)),
                 borderWidth: 1
             }]
         };
@@ -3657,7 +3719,20 @@ class ChartPair {
 			let chart;
 			const chartType = options.type;
 			
-			if (chartType === 'horizontalBar') {
+			// Определяем, какой класс использовать
+			if (chartType === 'pie' || chartType === 'doughnut') {
+				chart = new PieChart(canvasId, {
+					type: chartType,
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						plugins: {
+							legend: { position: 'right' },
+							tooltip: { /* ... ваши настройки ... */ }
+						}
+					}
+				});
+			} else if (chartType === 'horizontalBar') {
 				// Горизонтальная гистограмма с правильными метками
 				chart = new BarChart(canvasId, {
 					type: 'bar',
@@ -3721,13 +3796,14 @@ class ChartPair {
 						}
 					}
 				});
-			} else if (chartType === 'bar') {
-				// Вертикальная гистограмма
+			} else { // 'bar' (вертикальная) и 'line'
+				// Вертикальная гистограмма и линии
 				chart = new BarChart(canvasId, {
-					type: 'bar',
+					type: chartType === 'line' ? 'line' : 'bar',
 					options: {
 						responsive: true,
 						maintainAspectRatio: false,
+						indexAxis: 'x', // Это значение по умолчанию, но для ясности
 						plugins: {
 							legend: { display: false },
 							tooltip: {
@@ -3766,9 +3842,6 @@ class ChartPair {
 						}
 					}
 				});
-			} else {
-				// Другие типы графиков
-				chart = chartType === 'pie' ? new PieChart(canvasId) : new BarChart(canvasId);
 			}
 			
 			// Создаем график

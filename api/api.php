@@ -60,69 +60,365 @@ switch ($request) {
 
 // ==================== ОБРАБОТЧИКИ КОНКРЕТНЫХ ЭНДПОИНТОВ ====================
 
-// ==================== ОБРАБОТЧИК ПОКУПОК (MySQLi) ====================
+// ==================== ОБРАБОТЧИК ПОКУПОК (MySQLi) с поддержкой CRUD ====================
 function handlePurchases($db) {
-    // Получение всех покупок с JOIN магазинов и городов
-	$sql = "SELECT s.*, 
-				   st.shop as store_name, st.street, st.house,
-				   l.town_ru as city_name,
-				   c.name as category_name, c.icon as category_icon, c.color as category_color
-			FROM shops s
-			LEFT JOIN stores st ON s.store_id = st.id
-			LEFT JOIN locality l ON st.locality_id = l.id
-			LEFT JOIN categories c ON s.category_id = c.id
-			ORDER BY s.date DESC";
-            
-	$result = $db->query($sql);
-	if (!$result) {
-		http_response_code(500);
-		echo json_encode(['error' => $db->error]);
-		return;
-	}
-            
-	$purchases = [];
-	while ($row = $result->fetch_assoc()) {
-        $purchases[] = $row;
+    $method = $_SERVER['REQUEST_METHOD'];
+
+    // --- GET: Получение списка покупок ---
+    if ($method === 'GET') {
+        $sql = "SELECT s.*, 
+                       st.shop as store_name, st.street, st.house,
+                       l.town_ru as city_name,
+                       c.name as category_name, c.icon as category_icon, c.color as category_color
+                FROM shops s
+                LEFT JOIN stores st ON s.store_id = st.id
+                LEFT JOIN locality l ON st.locality_id = l.id
+                LEFT JOIN categories c ON s.category_id = c.id
+                ORDER BY s.date DESC";
+                
+        $result = $db->query($sql);
+        if (!$result) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $db->error]);
+            return;
+        }
+                    
+        $purchases = [];
+        while ($row = $result->fetch_assoc()) {
+            $purchases[] = $row;
+        }
+        
+        echo json_encode(['success' => true, 'data' => $purchases], JSON_UNESCAPED_UNICODE);
+        return;
     }
-    
-    echo json_encode(['data' => $purchases], JSON_UNESCAPED_UNICODE);
-}
 
-// ==================== ОБРАБОТЧИК МАГАЗИНОВ (MySQLi) ====================
-function handleStores($db) {
-    $sql = "SELECT s.*, l.town_ru as city_name 
-            FROM stores s 
-            LEFT JOIN locality l ON s.locality_id = l.id 
-            ORDER BY s.shop";
-    
-    $result = $db->query($sql);
-    
-    $stores = [];
-    while ($row = $result->fetch_assoc()) {
-		$stores[] = $row;
-	}
-    
-    echo json_encode(['data' => $stores], JSON_UNESCAPED_UNICODE);
-}
+    // --- POST: Добавление новой покупки ---
+    if ($method === 'POST') {
+        // Получаем данные из тела запроса (JSON)
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Неверный формат JSON']);
+            return;
+        }
 
-// ==================== ОБРАБОТЧИК ГОРОДОВ (MySQLi) ====================
-function handleCities($db) {
-    // Получение всех городов
-	$sql = "SELECT * FROM locality ORDER BY town_ru";
-	$result = $db->query($sql);
-            
-	if (!$result) {
-		http_response_code(500);
-		echo json_encode(['error' => $db->error], JSON_UNESCAPED_UNICODE);
-		return;
-	}
-            
-	$cities = [];
-	while ($row = $result->fetch_assoc()) {
-		$cities[] = $row;
-	}
+        // Валидация обязательных полей (можно добавить больше)
+        $required = ['date', 'store_id', 'name', 'category_id', 'price', 'quantity', 'item'];
+        foreach ($required as $field) {
+            if (!isset($input[$field]) || $input[$field] === '') {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => "Поле '$field' обязательно"]);
+                return;
+            }
+        }
+
+        // Экранирование данных
+        $date = $db->real_escape_string($input['date']);
+        $store_id = intval($input['store_id']);
+        $name = $db->real_escape_string($input['name']);
+        $category_id = intval($input['category_id']);
+        $price = floatval($input['price']);
+        $quantity = floatval($input['quantity']);
+        $item = $db->real_escape_string($input['item']);
+        $characteristic = isset($input['characteristic']) ? $db->real_escape_string($input['characteristic']) : '';
+        $amount = floatval($input['amount'] ?? ($price * $quantity)); // Расчет, если не передано
+
+        $sql = "INSERT INTO shops (date, store_id, name, category_id, characteristic, quantity, item, price, amount) 
+                VALUES ('$date', $store_id, '$name', $category_id, '$characteristic', $quantity, '$item', $price, $amount)";
+
+        if ($db->query($sql)) {
+            $new_id = $db->insert_id;
+            echo json_encode(['success' => true, 'message' => 'Покупка добавлена', 'id' => $new_id]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $db->error]);
+        }
+        return;
+    }
+
+    // --- PUT: Обновление покупки ---
+    if ($method === 'PUT') {
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!$input || !isset($input['id'])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Не указан ID покупки']);
+            return;
+        }
+
+        $id = intval($input['id']);
+        // Аналогично POST, но с UPDATE и WHERE id = $id
+        $date = $db->real_escape_string($input['date']);
+        $store_id = intval($input['store_id']);
+        $name = $db->real_escape_string($input['name']);
+        $category_id = intval($input['category_id']);
+        $price = floatval($input['price']);
+        $quantity = floatval($input['quantity']);
+        $item = $db->real_escape_string($input['item']);
+        $characteristic = $db->real_escape_string($input['characteristic'] ?? '');
+        $amount = floatval($input['amount']);
+
+        $sql = "UPDATE shops SET 
+                date = '$date',
+                store_id = $store_id,
+                name = '$name',
+                category_id = $category_id,
+                characteristic = '$characteristic',
+                quantity = $quantity,
+                item = '$item',
+                price = $price,
+                amount = $amount
+                WHERE id = $id";
+
+        if ($db->query($sql)) {
+            echo json_encode(['success' => true, 'message' => 'Покупка обновлена']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $db->error]);
+        }
+        return;
+    }
+
+    // --- DELETE: Удаление покупки ---
+    if ($method === 'DELETE') {
+        // ID должен быть в URL: /api.php?request=purchases/123
+        $pathParts = explode('/', $request);
+		$id = isset($pathParts[1]) ? intval($pathParts[1]) : 0;
 	
-	echo json_encode(['data' => $cities], JSON_UNESCAPED_UNICODE);
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Не указан ID покупки']);
+            return;
+        }
+
+        $sql = "DELETE FROM shops WHERE id = $id";
+        if ($db->query($sql)) {
+            echo json_encode(['success' => true, 'message' => 'Покупка удалена']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $db->error]);
+        }
+        return;
+    }
+
+    // Если метод не поддерживается
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Метод не поддерживается']);
+}
+
+// ==================== ОБРАБОТЧИК МАГАЗИНОВ (MySQLi) с поддержкой CRUD ====================
+function handleStores($db) {
+    $method = $_SERVER['REQUEST_METHOD'];
+
+    // --- GET: Получение списка магазинов ---
+    if ($method === 'GET') {
+        $sql = "SELECT s.*, l.town_ru as city_name 
+                FROM stores s 
+                LEFT JOIN locality l ON s.locality_id = l.id 
+                ORDER BY s.shop";
+        
+        $result = $db->query($sql);
+        
+        $stores = [];
+        while ($row = $result->fetch_assoc()) {
+            $stores[] = $row;
+        }
+        
+        echo json_encode(['success' => true, 'data' => $stores], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    // --- POST: Добавление/обновление магазина ---
+    if ($method === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Неверный формат JSON']);
+            return;
+        }
+
+        // Валидация
+        if (empty($input['shop']) || empty($input['locality_id']) || empty($input['street']) || empty($input['house'])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Заполните обязательные поля']);
+            return;
+        }
+
+        $shop = $db->real_escape_string($input['shop']);
+        $locality_id = intval($input['locality_id']);
+        $street = $db->real_escape_string($input['street']);
+        $house = $db->real_escape_string($input['house']);
+        $phone = $db->real_escape_string($input['phone'] ?? '');
+
+        if (isset($input['id']) && !empty($input['id'])) {
+            // Редактирование
+            $id = intval($input['id']);
+            $sql = "UPDATE stores SET 
+                    shop = '$shop',
+                    locality_id = $locality_id,
+                    street = '$street',
+                    house = '$house',
+                    phone = '$phone'
+                    WHERE id = $id";
+
+            if ($db->query($sql)) {
+                echo json_encode(['success' => true, 'message' => 'Магазин обновлён']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => $db->error]);
+            }
+        } else {
+            // Добавление
+            $sql = "INSERT INTO stores (shop, locality_id, street, house, phone) 
+                    VALUES ('$shop', $locality_id, '$street', '$house', '$phone')";
+
+            if ($db->query($sql)) {
+                $new_id = $db->insert_id;
+                echo json_encode(['success' => true, 'message' => 'Магазин добавлен', 'id' => $new_id]);
+            } else {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => $db->error]);
+            }
+        }
+        return;
+    }
+
+    // --- DELETE: Удаление магазина ---
+    if ($method === 'DELETE') {
+        $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Не указан ID магазина']);
+            return;
+        }
+
+        // Проверяем, есть ли покупки в этом магазине
+        $checkSql = "SELECT COUNT(*) as count FROM shops WHERE store_id = $id";
+        $checkResult = $db->query($checkSql);
+        $row = $checkResult->fetch_assoc();
+        
+        if ($row['count'] > 0) {
+            echo json_encode(['success' => false, 'error' => 'Нельзя удалить магазин, в котором есть покупки']);
+            return;
+        }
+
+        $sql = "DELETE FROM stores WHERE id = $id";
+        if ($db->query($sql)) {
+            echo json_encode(['success' => true, 'message' => 'Магазин удалён']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $db->error]);
+        }
+        return;
+    }
+
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Метод не поддерживается']);
+}
+
+// ==================== ОБРАБОТЧИК ГОРОДОВ (MySQLi) с поддержкой CRUD ====================
+function handleCities($db) {
+    $method = $_SERVER['REQUEST_METHOD'];
+
+    // --- GET: Получение списка городов ---
+    if ($method === 'GET') {
+        $sql = "SELECT * FROM locality ORDER BY town_ru";
+        $result = $db->query($sql);
+                
+        if (!$result) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $db->error]);
+            return;
+        }
+                
+        $cities = [];
+        while ($row = $result->fetch_assoc()) {
+            $cities[] = $row;
+        }
+        
+        echo json_encode(['success' => true, 'data' => $cities], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    // --- POST: Добавление/обновление города ---
+    if ($method === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Неверный формат JSON']);
+            return;
+        }
+
+        // Проверяем, есть ли id (редактирование) или нет (добавление)
+        if (isset($input['id']) && !empty($input['id'])) {
+            // Редактирование
+            $id = intval($input['id']);
+            $town_ru = $db->real_escape_string($input['town_ru']);
+            $town_en = $db->real_escape_string($input['town_en'] ?? '');
+            $code = $db->real_escape_string($input['code']);
+
+            $sql = "UPDATE locality SET 
+                    town_ru = '$town_ru',
+                    town_en = '$town_en',
+                    code = '$code'
+                    WHERE id = $id";
+
+            if ($db->query($sql)) {
+                echo json_encode(['success' => true, 'message' => 'Город обновлён']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => $db->error]);
+            }
+        } else {
+            // Добавление
+            $town_ru = $db->real_escape_string($input['town_ru']);
+            $town_en = $db->real_escape_string($input['town_en'] ?? '');
+            $code = $db->real_escape_string($input['code']);
+
+            $sql = "INSERT INTO locality (town_ru, town_en, code) 
+                    VALUES ('$town_ru', '$town_en', '$code')";
+
+            if ($db->query($sql)) {
+                $new_id = $db->insert_id;
+                echo json_encode(['success' => true, 'message' => 'Город добавлен', 'id' => $new_id]);
+            } else {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => $db->error]);
+            }
+        }
+        return;
+    }
+
+    // --- DELETE: Удаление города ---
+    if ($method === 'DELETE') {
+        $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Не указан ID города']);
+            return;
+        }
+
+        // Проверяем, есть ли магазины в этом городе
+        $checkSql = "SELECT COUNT(*) as count FROM stores WHERE locality_id = $id";
+        $checkResult = $db->query($checkSql);
+        $row = $checkResult->fetch_assoc();
+        
+        if ($row['count'] > 0) {
+            echo json_encode(['success' => false, 'error' => 'Нельзя удалить город, в котором есть магазины']);
+            return;
+        }
+
+        $sql = "DELETE FROM locality WHERE id = $id";
+        if ($db->query($sql)) {
+            echo json_encode(['success' => true, 'message' => 'Город удалён']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $db->error]);
+        }
+        return;
+    }
+
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Метод не поддерживается']);
 }
 
 // ==================== ОБРАБОТЧИК КАТЕГОРИЙ (MySQLi) ====================
