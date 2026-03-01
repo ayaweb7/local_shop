@@ -251,7 +251,10 @@ class ShoppingApp {
 			// *** ДЕЛАЕМ ТАБЛИЦУ ГЛОБАЛЬНОЙ ***
 			window.purchasesTable = this.table;
             
-            console.log('Таблица Tabulator инициализирована');
+			// ВЫЗЫВАЕМ СОБЫТИЕ о готовности таблицы
+			document.dispatchEvent(new Event('purchasesTableReady'));
+            
+			console.log('Таблица Tabulator инициализирована');
             
         } catch (error) {
             console.error('Ошибка инициализации таблицы:', error);
@@ -302,7 +305,7 @@ class ShoppingApp {
             },
             { 
 				title: 'Магазин', 
-				field: 'store.shop',  // Проверьте имя поля в консоли
+				field: 'store_name',  // Проверьте имя поля в консоли
 				width: 150,
 				headerFilter: 'input',
 				headerFilterPlaceholder: 'Поиск...',
@@ -1015,291 +1018,6 @@ class ShoppingApp {
 	
 }
 
-// ============================================
-// ИНТЕРАКТИВНОСТЬ
-// ============================================
-/**
-* Выбор фильтра
-*/
-function applyChartFilter() {
-    try {
-        const filterJson = localStorage.getItem('shoppingTracker_chartFilter');
-        const timestamp = localStorage.getItem('shoppingTracker_filterTimestamp');
-        
-        if (!filterJson || !timestamp) return;
-        
-        // Проверяем, не устарел ли фильтр (больше 30 минут)
-        const filterAge = Date.now() - parseInt(timestamp);
-        if (filterAge > 30 * 60 * 1000) {
-            console.log('Фильтр устарел, очищаем');
-            clearChartFilter();
-            return;
-        }
-        
-        const filter = JSON.parse(filterJson);
-        console.log('Применение фильтра из графика:', filter);
-        
-        // Применяем фильтр в зависимости от типа
-        applyFilterToTable(filter);
-        
-        // Показываем уведомление о примененном фильтре
-        showAppliedFilterNotification(filter);
-        
-    } catch (error) {
-        console.error('Ошибка применения фильтра:', error);
-    }
-}
-
-/**
-* Формирование таблицы при выборе фильтра
-*/
-function applyFilterToTable(filter) {
-    if (!window.purchasesTable) {
-        console.warn('Таблица не загружена, не могу применить фильтр');
-        return;
-    }
-    
-    let filterConfig = [];
-    
-    switch(filter.type) {
-        case 'categories':
-            // Фильтр по категории
-            filterConfig.push({
-                field: "category_name",
-                type: "like",
-                value: filter.label
-            });
-            break;
-            
-        case 'stores':
-            // Фильтр по магазину
-            if (filter.cleanLabel) {
-                filterConfig.push({
-                    field: "store.shop",
-                    type: "like",
-                    value: filter.cleanLabel
-                });
-            }
-            break;
-            
-        case 'months':
-            // Фильтр по месяцу
-            if (filter.monthNumber) {
-                filterConfig.push({
-                    field: "date",
-                    type: "function",
-                    value: function(cellValue) {
-                        if (!cellValue) return false;
-                        const date = new Date(cellValue);
-                        return (date.getMonth() + 1) === filter.monthNumber;
-                    }
-                });
-            }
-            break;
-            
-        case 'years':
-            // Фильтр по году
-            if (filter.year) {
-                filterConfig.push({
-                    field: "date",
-                    type: "function",
-                    value: function(cellValue) {
-                        if (!cellValue) return false;
-                        const date = new Date(cellValue);
-                        return date.getFullYear() === filter.year;
-                    }
-                });
-            }
-            break;
-            
-        case 'products':
-            // Фильтр по товару
-            if (filter.cleanLabel) {
-                filterConfig.push({
-                    field: "name",
-                    type: "like",
-                    value: filter.cleanLabel
-                });
-            }
-            break;
-    }
-    
-    // Применяем фильтр к таблице
-    if (filterConfig.length > 0) {
-        window.purchasesTable.setFilter(filterConfig);
-        
-        // Показываем количество отфильтрованных записей
-        const filteredCount = window.purchasesTable.getData("active").length;
-        console.log(`Применен фильтр: ${filter.label}, найдено: ${filteredCount} записей`);
-    }
-}
-
-/**
-* Создаём баннер фильтра
-*/
-function showAppliedFilterNotification(filter) {
-    // Создаем баннер фильтра
-    const filterBanner = document.createElement('div');
-    filterBanner.id = 'applied-filter-banner';
-    filterBanner.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span>Применен фильтр: <strong>${filter.label}</strong></span>
-            <button id="clear-applied-filter" class="btn-small btn-secondary">× Очистить</button>
-        </div>
-    `;
-    
-    filterBanner.style.cssText = `
-        background: #e3f2fd;
-        border: 1px solid #2196f3;
-        border-radius: 4px;
-        padding: 10px 15px;
-        margin: 10px 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    `;
-    
-    // Вставляем перед таблицей
-    const tableContainer = document.querySelector('.table-container');
-    if (tableContainer) {
-        tableContainer.insertBefore(filterBanner, tableContainer.firstChild);
-    }
-    
-    // Обработчик очистки
-    document.getElementById('clear-applied-filter').addEventListener('click', function() {
-        clearChartFilter();
-        if (window.purchasesTable) {
-            window.purchasesTable.clearFilter();
-        }
-        filterBanner.remove();
-    });
-}
-
-/**
-* Очистка фильтра
-*/
-function clearChartFilter() {
-    localStorage.removeItem('shoppingTracker_chartFilter');
-    localStorage.removeItem('shoppingTracker_filterTimestamp');
-    console.log('Фильтр очищен');
-}
-
-// ============================================
-// ПРОГРЕСС-БАР ДЛЯ ЭКСПОРТА БОЛЬШИХ ДАННЫХ
-// ============================================
-// Прогресс-бар для больших экспортов
-class ExportProgressBar {
-    constructor() {
-        this.element = null;
-    }
-    
-    show(total) {
-        if (this.element) this.hide();
-        
-        this.element = document.createElement('div');
-        this.element.className = 'export-progress';
-        this.element.innerHTML = `
-            <div class="progress-container">
-                <div class="progress-header">Экспорт данных</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: 0%"></div>
-                </div>
-                <div class="progress-stats">
-                    <span class="progress-count">0/${total}</span>
-                    <span class="progress-percent">0%</span>
-                </div>
-            </div>
-        `;
-        
-        // Стили
-        const style = document.createElement('style');
-        style.textContent = `
-            .export-progress {
-                position: fixed;
-                bottom: 30px;
-                right: 30px;
-                background: white;
-                border-radius: 10px;
-                padding: 15px;
-                box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-                z-index: 10001;
-                min-width: 300px;
-            }
-            
-            .progress-container {
-                width: 100%;
-            }
-            
-            .progress-header {
-                font-weight: bold;
-                margin-bottom: 10px;
-                color: #2c3e50;
-            }
-            
-            .progress-bar {
-                height: 20px;
-                background: #ecf0f1;
-                border-radius: 10px;
-                overflow: hidden;
-                margin-bottom: 8px;
-            }
-            
-            .progress-fill {
-                height: 100%;
-                background: linear-gradient(90deg, #3498db, #2ecc71);
-                transition: width 0.3s ease;
-                border-radius: 10px;
-            }
-            
-            .progress-stats {
-                display: flex;
-                justify-content: space-between;
-                font-size: 12px;
-                color: #7f8c8d;
-            }
-        `;
-        
-        document.head.appendChild(style);
-        document.body.appendChild(this.element);
-        
-        this.element.total = total;
-    }
-    
-    update(current) {
-        if (!this.element) return;
-        
-        const total = this.element.total;
-        const percent = Math.round((current / total) * 100);
-        
-        const fill = this.element.querySelector('.progress-fill');
-        const count = this.element.querySelector('.progress-count');
-        const percentEl = this.element.querySelector('.progress-percent');
-        
-        if (fill) fill.style.width = percent + '%';
-        if (count) count.textContent = `${current}/${total}`;
-        if (percentEl) percentEl.textContent = percent + '%';
-        
-        if (current >= total) {
-            setTimeout(() => this.hide(), 1000);
-        }
-    }
-    
-    hide() {
-        if (this.element) {
-            this.element.style.animation = 'fadeOut 0.3s ease';
-            setTimeout(() => {
-                if (this.element && this.element.parentNode) {
-                    this.element.parentNode.removeChild(this.element);
-                    this.element = null;
-                }
-            }, 300);
-        }
-    }
-}
-
-// Использование
-const progressBar = new ExportProgressBar();
-
 
 // ЗАПУСК ПРИЛОЖЕНИЯ
 document.addEventListener('DOMContentLoaded', () => {
@@ -1312,11 +1030,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return;
     }
-	// Ждем загрузки таблицы
-    setTimeout(() => {
-        applyChartFilter();
-    }, 1000);
-    
+	    
     // Создаем и инициализируем приложение
     window.shoppingApp = new ShoppingApp();
     window.shoppingApp.init();

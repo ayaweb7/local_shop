@@ -109,14 +109,14 @@
 			<div>
 				<button id="apply-filters" class="btn-secondary">Применить</button>
 				<button id="reset-filters" class="btn-secondary">Сбросить</button>
-				<button id="clear-all-filters" class="btn-secondary" title="Очистить все фильтры">🗑️ Сбросить интерактивность</button>
+				<!-- <button id="clear-all-filters" class="btn-secondary" title="Очистить все фильтры">🗑️ Сбросить интерактивность</button> -->
 			</div>
 		</div>
 		
 		<!-- После панели фильтров -->
 		<div id="active-filters-info" style="
 			display: none;
-			background: #e3f2fd;
+			background: red; <!-- #e3f2fd -->
 			padding: 8px 12px;
 			margin: 10px 0;
 			border-radius: 4px;
@@ -156,239 +156,41 @@
 	</main>
   
   <!-- <script src="js/chart.min.js"></script> -->
-  <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script><!--  -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/data-exporter.js"></script>
-  <script src="js/filters.js"></script>
-  <script src="js/stats.js"></script>
-  <script src="js/app.js"></script>
-  <script>
-	document.getElementById('clear-all-filters').addEventListener('click', function() {
-		if (window.purchasesTable) {
-			window.purchasesTable.clearFilter();
-		}
-		clearChartFilter();
-		
-		// Удаляем баннер фильтра если есть
-		const banner = document.getElementById('applied-filter-banner');
-		if (banner) banner.remove();
-		
-		// Показываем сообщение
-		showToast('Все фильтры очищены');
-	});
-	
-	// Инициализация экспорта
-	document.addEventListener('DOMContentLoaded', function() {
-		setupExportControls();
-	});
-	
-	// Фильтры
-	function showToast(message) {
-		const toast = document.createElement('div');
-		toast.textContent = message;
-		toast.style.cssText = `
-			position: fixed;
-			bottom: 20px;
-			right: 20px;
-			background: #27ae60;
-			color: white;
-			padding: 10px 20px;
-			border-radius: 4px;
-			z-index: 1000;
-			animation: fadeInOut 3s ease-in-out;
-		`;
-		
-		const style = document.createElement('style');
-		style.textContent = `
-			@keyframes fadeInOut {
-				0% { opacity: 0; transform: translateY(20px); }
-				10% { opacity: 1; transform: translateY(0); }
-				90% { opacity: 1; transform: translateY(0); }
-				100% { opacity: 0; transform: translateY(20px); }
-			}
-		`;
-		document.head.appendChild(style);
-		
-		document.body.appendChild(toast);
-		
-		setTimeout(() => {
-			if (toast.parentNode) {
-				toast.parentNode.removeChild(toast);
-			}
-		}, 3000);
-	}
-	
-	// Логика работы экспорта данных
-	function setupExportControls() {
-    const exportButton = document.getElementById('export-button');
-    const exportMenu = document.getElementById('export-menu');
-    const closeButton = document.getElementById('close-export-menu');
-    const startButton = document.getElementById('start-export');
-    const formatOptions = document.querySelectorAll('.export-option');
-    const truncateOption = document.getElementById('truncate-option');
-    
-    let currentFormat = 'csv';
-    
-    // Открытие/закрытие меню
-    exportButton.addEventListener('click', function(e) {
-        e.stopPropagation();
-        const isVisible = exportMenu.style.display !== 'none';
-        exportMenu.style.display = isVisible ? 'none' : 'block';
-    });
-    
-    // Закрытие при клике вне меню
-    document.addEventListener('click', function(e) {
-        if (!exportMenu.contains(e.target) && e.target !== exportButton) {
-            exportMenu.style.display = 'none';
-        }
-    });
-    
-    // Закрытие по кнопке
-    closeButton.addEventListener('click', function() {
-        exportMenu.style.display = 'none';
-    });
-    
-    // Выбор формата
-    formatOptions.forEach(option => {
-        option.addEventListener('click', function() {
-            const format = this.dataset.format;
-            currentFormat = format;
-            
-            // Подсветка выбранного
-            formatOptions.forEach(opt => opt.style.background = 'white');
-            this.style.background = '#f0f7ff';
-            
-            // Показываем дополнительные опции для SQL
-            truncateOption.style.display = format === 'sql' ? 'block' : 'none';
-        });
-    });
-    
-    // Запуск экспорта
-    startButton.addEventListener('click', async function() {
-        exportMenu.style.display = 'none';
-        
-        // Получаем данные для экспорта
-        const data = await getDataForExport();
-        
-        if (!data || data.length === 0) {
-            alert('Нет данных для экспорта');
-            return;
-        }
-        
-        // Получаем настройки
-        const includeHeaders = document.getElementById('export-headers').checked;
-        const onlyFiltered = document.getElementById('export-filters').checked;
-        const truncateFirst = document.getElementById('export-truncate')?.checked || false;
-        
-        // Показываем индикатор загрузки
-        showLoadingIndicator(`Экспорт ${data.length} записей...`);
-        
-        // Выполняем экспорт
-        try {
-            const filename = dataExporter.generateFilename('shopping_list');
-            
-            dataExporter.export(data, {
-                format: currentFormat,
-                filename: filename,
-                headers: includeHeaders,
-                tableName: 'shops',
-                truncateFirst: truncateFirst,
-                separator: currentFormat === 'xls' ? '\t' : ';',
-                decimalSeparator: ',',
-                pretty: true
-            });
-        } catch (error) {
-            console.error('Ошибка экспорта:', error);
-            alert('Ошибка при экспорте данных');
-        } finally {
-            hideLoadingIndicator();
-        }
-    });
-}
+	<!-- Библиотеки -->
+	<script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-	/**
-	 * Получение данных для экспорта
-	 */
-	async function getDataForExport() {
-		// Если есть таблица Tabulator и включен фильтр "только отфильтрованные"
-		const onlyFiltered = document.getElementById('export-filters').checked;
+	<!-- Наши модули в правильном порядке -->
+	<script src="js/api.js"></script>
+	<script src="js/data-exporter.js"></script>
+	<script src="js/filters.js"></script>
+	<script src="js/stats.js"></script>
+	<script src="js/app.js"></script>
+	<script src="js/app-export.js"></script>
+
+	<!-- Инициализация -->
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			// Даём время app.js инициализироваться
+			setTimeout(() => {
+				if (window.setupExportControls) {
+					setupExportControls();
+				}
+				if (window.setupClearFilters) {
+					setupClearFilters();
+				}
+			}, 100); // Небольшая задержка для гарантии
+		});
 		
-		if (onlyFiltered && window.purchasesTable) {
-			// Получаем отфильтрованные данные из таблицы
-			return window.purchasesTable.getData('active');
-		} else {
-			// Иначе получаем все данные через API
-			try {
-				const response = await apiClient.getPurchases();
-				return response;
-			} catch (error) {
-				console.error('Ошибка загрузки данных:', error);
-				return [];
+		// Простая обёртка для обратной совместимости
+		function showToast(message) {
+			if (window.showToast) {
+				window.showToast(message);
+			} else {
+				alert(message);
 			}
 		}
-	}
-
-	/**
-	 * Показ индикатора загрузки
-	 */
-	function showLoadingIndicator(message) {
-		const indicator = document.createElement('div');
-		indicator.id = 'export-loading';
-		indicator.className = 'loading-indicator';
-		indicator.innerHTML = `
-			<div class="spinner"></div>
-			<span>${message}</span>
-		`;
-		
-		// Стили для индикатора
-		const style = document.createElement('style');
-		style.textContent = `
-			#export-loading {
-				position: fixed;
-				top: 50%;
-				left: 50%;
-				transform: translate(-50%, -50%);
-				background: rgba(0,0,0,0.8);
-				color: white;
-				padding: 20px 30px;
-				border-radius: 10px;
-				display: flex;
-				align-items: center;
-				gap: 15px;
-				z-index: 10000;
-				box-shadow: 0 5px 25px rgba(0,0,0,0.3);
-			}
-			
-			.spinner {
-				width: 24px;
-				height: 24px;
-				border: 3px solid rgba(255,255,255,0.3);
-				border-top-color: white;
-				border-radius: 50%;
-				animation: spin 1s linear infinite;
-			}
-			
-			@keyframes spin {
-				to { transform: rotate(360deg); }
-			}
-		`;
-		
-		document.head.appendChild(style);
-		document.body.appendChild(indicator);
-	}
-
-	/**
-	 * Скрытие индикатора загрузки
-	 */
-	function hideLoadingIndicator() {
-		const indicator = document.getElementById('export-loading');
-		if (indicator) {
-			indicator.remove();
-		}
-	}
-	
-  </script>
+	</script>
   
   <!-- Форма для добавления / редактирования покупок -->
 <div id="purchase-modal" class="modal">

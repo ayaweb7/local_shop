@@ -1,12 +1,11 @@
-/* ================================================== */
-/* SHOPPING TRACKER - ОСНОВНЫЕ СТИЛИ */
-/* ================================================== */
+/* ==================================================
+   SHOPPING TRACKER - ОСНОВНЫЕ СТИЛИ
+   ================================================== */
 
-/* === СБРОС И БАЗОВЫЕ СТИЛИ === */
-* {
-    box-sizing: border-box;
-}
-
+/* --------------------------------------------------------------------
+   1. СБРОС И БАЗОВЫЕ СТИЛИ
+   -------------------------------------------------------------------- */
+* { box-sizing: border-box; }
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
@@ -15,7 +14,6 @@ body {
     line-height: 1.6;
     color: #333;
 }
-
 .container {
     max-width: 1400px;
     margin: 0 auto;
@@ -25,7 +23,9 @@ body {
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
-/* === НАВИГАЦИЯ И КНОПКИ === */
+/* --------------------------------------------------------------------
+   2. НАВИГАЦИЯ И КНОПКИ
+   -------------------------------------------------------------------- */
 .app-nav {
     display: flex;
     gap: 10px;
@@ -36,7 +36,6 @@ body {
     border-radius: 6px;
 }
 
-/* Базовые стили кнопок */
 .btn-primary {
     background: #007bff;
     color: white;
@@ -48,11 +47,7 @@ body {
     transition: all 0.3s ease;
     font-weight: 500;
 }
-
-.btn-primary:hover {
-    background: #0056b3;
-    transform: translateY(-1px);
-}
+.btn-primary:hover { background: #0056b3; transform: translateY(-1px); }
 
 .btn-secondary {
     background: #6c757d;
@@ -64,46 +59,32 @@ body {
     font-size: 14px;
     transition: all 0.3s ease;
 }
+.btn-secondary:hover { background: #545b62; transform: translateY(-1px); }
 
-.btn-secondary:hover {
-    background: #545b62;
-    transform: translateY(-1px);
-}
-
-/* === ТАБЛИЦЫ TABULATOR === */
+/* --------------------------------------------------------------------
+   3. ТАБЛИЦЫ И ИНФОРМАЦИОННЫЕ ПАНЕЛИ
+   -------------------------------------------------------------------- */
+/* Tabulator */
 #purchases-table {
     border: 2px solid #dee2e6;
     border-radius: 6px;
     margin-top: 20px;
     background: white;
 }
-
-.tabulator {
-    font-size: 14px;
-}
-
+.tabulator { font-size: 14px; }
 .tabulator .tabulator-header {
     background: #f8f9fa;
     font-weight: 600;
     border-bottom: 2px solid #dee2e6;
 }
-
 .tabulator .tabulator-row {
     border-bottom: 1px solid #e9ecef;
     transition: background-color 0.2s ease;
 }
-
-.tabulator .tabulator-row:hover {
-    background-color: #f8f9fa;
-}
-
-.tabulator .tabulator-cell {
-    padding: 8px 12px;
-}
-
+.tabulator .tabulator-row:hover { background-color: #f8f9fa; }
+.tabulator .tabulator-cell { padding: 8px 12px; }
 
 /* Информационная панель таблицы */
-
 .table-info-panel {
     display: flex;
     justify-content: space-between;
@@ -115,24 +96,9 @@ body {
     margin: 15px 0;
     font-size: 14px;
 }
-
-.info-left {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-#table-status {
-    font-weight: 600;
-    color: #495057;
-}
-
-.active-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    font-size: 12px;
-}
+.info-left { display: flex; flex-direction: column; gap: 5px; }
+#table-status { font-weight: 600; color: #495057; }
+.active-filters { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; }
 
 .filter-badge {
     background: #e3f2fd;
@@ -143,7 +109,6 @@ body {
     align-items: center;
     gap: 4px;
 }
-
 .filter-badge .remove-filter {
     cursor: pointer;
     font-size: 16px;
@@ -151,178 +116,43 @@ body {
     margin-left: 4px;
     opacity: 0.7;
 }
+.filter-badge .remove-filter:hover { opacity: 1; }
 
-.filter-badge .remove-filter:hover {
-    opacity: 1;
-}
+.info-right { display: flex; gap: 20px; }
+.info-item { display: flex; flex-direction: column; align-items: flex-end; min-width: 120px; }
+.info-label { color: #6c757d; font-size: 12px; margin-bottom: 2px; }
+.info-value { font-weight: 600; color: #495057; font-size: 16px; }
+#total-amount { color: #dc3545; }
+#avg-amount { color: #28a745; }
 
-.info-right {
+/* --------------------------------------------------------------------
+   4. ФИЛЬТРЫ
+   -------------------------------------------------------------------- */
+.filters-panel {
     display: flex;
-    gap: 20px;
-}
-
-.info-item {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    min-width: 120px;
-}
-
-.info-label {
-    color: #6c757d;
-    font-size: 12px;
-    margin-bottom: 2px;
-}
-
-.info-value {
-    font-weight: 600;
-    color: #495057;
-    font-size: 16px;
-}
-
-#total-amount {
-    color: #dc3545;
-}
-
-#avg-amount {
-    color: #28a745;
-}
-
-/* ===== АНИМАЦИИ ДЛЯ ИНДЕКСНОЙ СТРАНИЦЫ ===== */
-.animated-title {
-    text-align: center;
-    margin: 40px 0;
-    animation: fadeInDown 1s ease;
-}
-
-@keyframes fadeInDown {
-    from {
-        opacity: 0;
-        transform: translateY(-30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.title-underline {
-    width: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #3498db, #2ecc71);
-    margin: 10px auto;
-    animation: expandWidth 0.8s ease-out 0.5s forwards;
-}
-
-@keyframes expandWidth {
-    to { width: 100px; }
-}
-
-/* === АДМИН-ПАНЕЛЬ === */
-.tab-navigation {
-    display: flex;
-    gap: 5px;
-    margin: 20px 0;
-    border-bottom: 2px solid #dee2e6;
-    padding-bottom: 10px;
     flex-wrap: wrap;
-}
-
-.tab-button {
-    padding: 10px 20px;
-    border: 1px solid #ddd;
-    background: #f5f5f5;
-    cursor: pointer;
-    border-radius: 4px 4px 0 0;
-    transition: all 0.3s ease;
-    border-bottom: none;
-    font-size: 14px;
-}
-
-.tab-button:hover {
-    background: #e9ecef;
-}
-
-.tab-button.active {
-    background: #007bff;
-    color: white;
-    border-color: #007bff;
-}
-
-.tab-content {
-    display: none;
-    padding: 20px 0;
-}
-
-.tab-content.active {
-    display: block;
-    animation: fadeIn 0.3s ease;
-}
-
-.controls {
-    margin: 20px 0;
-    display: flex;
-    gap: 10px;
-    padding: 15px;
+    gap: 15px;
+    align-items: center;
+    padding: 20px;
     background: #f8f9fa;
-    border-radius: 6px;
-    flex-wrap: wrap;
+    border-radius: 8px;
+    margin: 15px 0;
 }
-
-/* Кнопки действий в таблицах админки */
-.edit-btn, .delete-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 5px 8px;
-    font-size: 16px;
-    margin: 0 2px;
-    border-radius: 3px;
-    transition: all 0.2s ease;
-}
-
-.edit-btn:hover {
-    background: #007bff;
-    color: white;
-    transform: scale(1.1);
-}
-
-.delete-btn:hover {
-    background: #dc3545;
-    color: white;
-    transform: scale(1.1);
-}
-
-/* === СОСТОЯНИЯ ЗАГРУЗКИ === */
-#loading {
-    text-align: center;
-    padding: 40px;
-    font-size: 18px;
-    color: #6c757d;
-    background: #f8f9fa;
-    border-radius: 6px;
-    margin: 20px 0;
-    border: 2px dashed #dee2e6;
-}
-
-/* === УВЕДОМЛЕНИЯ (для будущего использования) === */
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 15px 20px;
+.filter-group { display: flex; align-items: center; gap: 10px; }
+.filter-group label { font-weight: 500; white-space: nowrap; }
+.filter-group select,
+.filter-group input {
+    min-width: 150px;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
     border-radius: 4px;
-    color: white;
-    z-index: 1000;
-    animation: slideInRight 0.3s ease;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    background: white;
 }
+.filter-group input[type="date"] { width: 120px; }
 
-.notification.success { background: #28a745; }
-.notification.error { background: #dc3545; }
-.notification.info { background: #17a2b8; }
-
-/* === МОДАЛЬНЫЕ ОКНА === */
+/* --------------------------------------------------------------------
+   5. МОДАЛЬНЫЕ ОКНА И ФОРМЫ
+   -------------------------------------------------------------------- */
 .modal {
     display: none;
     position: fixed;
@@ -334,7 +164,6 @@ body {
     background-color: rgba(0,0,0,0.5);
     animation: fadeIn 0.3s ease;
 }
-
 .modal-content {
     background-color: white;
     margin: 5% auto;
@@ -342,13 +171,12 @@ body {
     border-radius: 8px;
     width: 90%;
     max-width: 600px;
-    max-height: 80vh; /* Уменьшили высоту чтобы убрать скролл */
+    max-height: 80vh;
     overflow-y: auto;
     position: relative;
     animation: modalSlideIn 0.3s ease;
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
-
 .close-modal {
     position: absolute;
     right: 15px;
@@ -357,187 +185,22 @@ body {
     cursor: pointer;
     color: #999;
     transition: color 0.3s ease;
-    background: none;
-    border: none;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
+.close-modal:hover { color: #333; }
 
-.close-modal:hover {
-    color: #333;
-    background: #f8f9fa;
-    border-radius: 50%;
-}
-
-/* === АДМИН-ПАНЕЛЬ === */
-.admin-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-    background: white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.admin-table th {
-    background: #f8f9fa;
-    padding: 12px 15px;
-    text-align: left;
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
-}
-
-.admin-table td {
-    padding: 10px 15px;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.admin-table tr:hover {
-    background-color: #f8f9fa;
-}
-
-.admin-table .actions {
-    white-space: nowrap;
-}
-
-.admin-table .actions button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 5px 8px;
-    font-size: 16px;
-    margin: 0 2px;
-    border-radius: 3px;
-    transition: all 0.2s ease;
-}
-
-.admin-table .actions .edit-btn:hover {
-    background: #007bff;
-    color: white;
-}
-
-.admin-table .actions .delete-btn:hover {
-    background: #dc3545;
-    color: white;
-}
-
-.empty-message {
-    text-align: center;
-    padding: 40px;
-    color: #6c757d;
-    font-style: italic;
-}
-
-/***** ФОРМЫ АДМИНКИ - 2 *****/
-
-.admin-form {
-    max-width: 500px;
-    margin: 0 auto;
-}
-
-.admin-form .form-group {
-    margin-bottom: 15px;
-}
-
-.admin-form label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
-    color: #495057;
-}
-
-.admin-form input,
-.admin-form select {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    font-size: 14px;
-}
-
-.admin-form input:focus,
-.admin-form select:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
-}
-
-.form-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 20px;
-    padding-top: 15px;
-    border-top: 1px solid #e9ecef;
-}
-
-/* Модальные окна админки */
-.modal-overlay .modal-content {
-    background: white;
-    padding: 25px;
-    border-radius: 8px;
-    max-width: 600px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-}
-
-.modal-overlay h3 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    color: #333;
-}
-
-/* ================================================== */
-/* КОМПАКТНАЯ ФОРМА ДОБАВЛЕНИЯ ПОКУПОК */
-/* ================================================== */
-
-/* Основной контейнер формы */
-.modal-content.compact-form {
-    max-width: 650px !important; /* Чуть меньше для компактности */
-    max-height: 75vh !important; /* Еще меньше высота */
-    padding: 20px !important;
-}
-
-/* Сетка формы - 4 КОЛОНКИ для числовых полей */
+/* Компактная форма покупок */
+.modal-content.compact-form { max-width: 650px !important; max-height: 75vh !important; padding: 20px !important; }
 .compact-form .form-grid {
     display: grid !important;
-    grid-template-columns: 1fr 1fr 1fr 1fr !important; /* 4 колонки */
+    grid-template-columns: 1fr 1fr 1fr 1fr !important;
     gap: 10px !important;
     margin: 15px 0 !important;
     align-items: start;
 }
-
-/* Полноширинные элементы */
-.compact-form .form-group.full-width {
-    grid-column: 1 / -1 !important; /* Занимает все 4 колонки */
-}
-
-/* Полуширинные элементы */
-.compact-form .form-group.half-width {
-    grid-column: span 2 !important; /* Занимает 2 колонки */
-}
-
-/* Группы полей */
-.compact-form .form-group {
-    margin-bottom: 8px;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Метки полей */
-.compact-form .form-group label {
-    font-size: 12px !important;
-    font-weight: 600;
-    margin-bottom: 4px;
-    color: #495057;
-    display: block;
-}
-
-/* Поля ввода - КОМПАКТНЫЕ */
+.compact-form .form-group.full-width { grid-column: 1 / -1 !important; }
+.compact-form .form-group.half-width { grid-column: span 2 !important; }
+.compact-form .form-group { margin-bottom: 8px; display: flex; flex-direction: column; }
+.compact-form .form-group label { font-size: 12px !important; font-weight: 600; margin-bottom: 4px; color: #495057; }
 .compact-form .form-group input,
 .compact-form .form-group select,
 .compact-form .form-group textarea {
@@ -547,85 +210,23 @@ body {
     border-radius: 4px;
     width: 100%;
     box-sizing: border-box;
-    transition: all 0.2s ease;
-    height: 35px !important; /* Фиксированная высота */
+    height: 35px !important;
 }
+.compact-form .form-group textarea { height: auto !important; min-height: 60px; resize: vertical; }
 
-.compact-form .form-group textarea {
-    height: auto !important;
-    min-height: 60px;
-    resize: vertical;
+/* Формы админки */
+.admin-form { max-width: 500px; margin: 0 auto; }
+.admin-form .form-group { margin-bottom: 15px; }
+.admin-form label { display: block; margin-bottom: 5px; font-weight: 500; color: #495057; }
+.admin-form input,
+.admin-form select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
 }
-
-/* Состояния фокуса */
-.compact-form .form-group input:focus,
-.compact-form .form-group select:focus,
-.compact-form .form-group textarea:focus {
-    border-color: #007bff !important;
-    box-shadow: 0 0 0 2px rgba(0,123,255,0.1) !important;
-    outline: none;
-}
-
-/* === ЧИСЛОВЫЕ ПОЛЯ - ОСОБЫЕ СТИЛИ === */
-
-/* Убираем стрелочки в числовых полях */
-.compact-form input[type="number"] {
-    -moz-appearance: textfield !important; /* Firefox */
-    text-align: right !important;
-    font-family: 'Courier New', monospace !important;
-}
-
-.compact-form input[type="number"]::-webkit-outer-spin-button,
-.compact-form input[type="number"]::-webkit-inner-spin-button {
-    -webkit-appearance: none !important;
-    margin: 0 !important;
-}
-
-/* Компактные числовые поля */
-#purchase-price, 
-#purchase-quantity, 
-#purchase-unit, 
-#purchase-amount {
-    grid-column: span 1 !important; /* Каждое поле занимает 1 колонку */
-}
-
-/* Специфические стили для каждого числового поля */
-#purchase-price {
-    /* Цена */
-}
-
-#purchase-quantity {
-    /* Количество */
-}
-
-#purchase-unit {
-    /* Единица измерения */
-}
-
-#purchase-amount {
-    /* Стоимость */
-    font-weight: 600;
-    background-color: #f8f9fa;
-}
-
-/* === ВАЛИДАЦИЯ ФОРМ === */
-.form-group.error input,
-.form-group.error select,
-.form-group.error textarea {
-    border-color: #dc3545 !important;
-    background-color: #fff5f5;
-}
-
-.error-message {
-    color: #dc3545;
-    font-size: 11px !important;
-    margin-top: 3px;
-    min-height: 12px;
-    font-weight: 500;
-}
-
-/* === КНОПКИ ФОРМЫ === */
-.compact-form .form-actions {
+.form-actions {
     display: flex;
     gap: 10px;
     justify-content: flex-end;
@@ -634,148 +235,64 @@ body {
     border-top: 1px solid #e9ecef;
 }
 
-.compact-form .btn-primary {
-    padding: 8px 16px !important;
-    font-size: 13px !important;
-    min-width: 120px;
+/* --------------------------------------------------------------------
+   6. АДМИН-ПАНЕЛЬ
+   -------------------------------------------------------------------- */
+.tab-button {
+    padding: 10px 20px;
+    border: 1px solid #ddd;
+    background: #f5f5f5;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+    transition: all 0.3s ease;
+    border-bottom: none;
+    font-size: 14px;
 }
+.tab-button:hover { background: #e9ecef; }
+.tab-button.active { background: #007bff; color: white; border-color: #007bff; }
 
-.compact-form .btn-secondary {
-    padding: 8px 12px !important;
-    font-size: 13px !important;
+.tab-content { display: none; padding: 20px 0; }
+.tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-
-/* ================================================== */
-/* АНИМАЦИИ */
-/* ================================================== */
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes modalSlideIn {
-    from { 
-        transform: translateY(-50px); 
-        opacity: 0; 
-    }
-    to { 
-        transform: translateY(0); 
-        opacity: 1; 
-    }
-}
-
-@keyframes slideInRight {
-    from { 
-        transform: translateX(100%); 
-        opacity: 0; 
-    }
-    to { 
-        transform: translateX(0); 
-        opacity: 1; 
-    }
-}
-
-/* ================================================== */
-/* АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */
-/* ================================================== */
-
-
-
-/* ================================================== */
-/* УТИЛИТАРНЫЕ СТИЛИ */
-/* ================================================== */
-
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.text-left { text-align: left; }
-
-.mt-10 { margin-top: 10px; }
-.mb-10 { margin-bottom: 10px; }
-.mt-20 { margin-top: 20px; }
-.mb-20 { margin-bottom: 20px; }
-
-.hidden { display: none; }
-.visible { display: block; }
-
-/* Стили для отладки (можно удалить в продакшене) */
-.debug-border {
-    border: 1px solid red !important;
-}
-
-/* ************************ */
-/* Стили для кнопки расчета */
-/* ************************ */
-.calculate-btn {
-    background: #6c757d !important;
-    color: white !important;
-    border: none !important;
-    padding: 4px 8px !important;
-    border-radius: 3px !important;
-    cursor: pointer !important;
-    font-size: 11px !important;
-    transition: all 0.2s ease !important;
-}
-
-.calculate-btn:hover {
-    background: #545b62 !important;
-    transform: translateY(-1px) !important;
-}
-
-.calculation-hint {
-    font-size: 10px !important;
-    color: #6c757d !important;
-    font-style: italic !important;
-    margin-left: 5px !important;
-}
-
-/***** ПАНЕЛЬ ФИЛЬТРОВ *****/
-.filters-panel {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    align-items: center;
-    padding: 20px;
+.admin-table th {
     background: #f8f9fa;
-    border-radius: 8px;
-    margin: 15px 0;
-}
-
-.filter-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.filter-group label {
-    font-size: 12px;
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
     font-weight: 600;
-    margin-bottom: 5px;
-    color: #495057;
 }
-
-.filter-group select,
-.filter-group input {
-	min-width: 150px;
-    padding: 8px 12px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-	background: white;
+.admin-table td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #e9ecef;
 }
+.admin-table tr:hover { background-color: #f8f9fa; }
+.admin-table .actions { white-space: nowrap; }
 
-.filter-group input[type="date"] {
-    width: 120px;
+.edit-btn, .delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px 8px;
+    font-size: 16px;
+    margin: 0 2px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
 }
+.edit-btn:hover { background: #007bff; color: white; transform: scale(1.1); }
+.delete-btn:hover { background: #dc3545; color: white; transform: scale(1.1); }
 
-.filter-group label {
-    font-weight: 500;
-    white-space: nowrap;
-}
+.empty-message { text-align: center; padding: 40px; color: #6c757d; font-style: italic; }
 
-/* ============================================
-		ПАНЕЛЬ СТАТИСТИКИ  
-   ============================================ */
-
+/* --------------------------------------------------------------------
+   7. СТАТИСТИКА
+   -------------------------------------------------------------------- */
 .stats-container {
     background: white;
     border-radius: 8px;
@@ -783,62 +300,6 @@ body {
     margin-bottom: 20px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-
-.stats-panel {
-    background: white;
-    padding: 15px;
-    border-radius: 6px;
-    margin: 15px 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.stats-panel h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: #333;
-}
-
-.category-stat {
-    display: flex;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
-}
-
-.category-stat:last-child {
-    border-bottom: none;
-}
-
-.category-icon {
-    font-size: 20px;
-    margin-right: 10px;
-    width: 30px;
-    text-align: center;
-}
-
-.category-name {
-    flex: 1;
-}
-
-.category-amount {
-    font-weight: 600;
-    color: #28a745;
-}
-
-.category-count {
-    color: #6c757d;
-    font-size: 12px;
-    margin-left: 10px;
-}
-
-.stats-summary {
-    display: flex;
-    gap: 15px;
-    color: #6c757d;
-    font-size: 0.9rem;
-}
-
-/* Заголовок статистики */
 .stats-header {
     display: flex;
     justify-content: space-between;
@@ -847,50 +308,14 @@ body {
     padding-bottom: 10px;
     border-bottom: 2px solid #e9ecef;
 }
+.stats-header h3 { margin: 0; color: #333; font-size: 1.2rem; }
 
-.stats-header h3 {
-    margin: 0;
-    color: #333;
-    font-size: 1.2rem;
-}
-
-
-#toggle-stats {
-    padding: 5px 10px;
-    font-size: 12px;
-}
-
-.stats-panel.collapsed {
-    display: none;
-}
-
-.stats-table {
-    display: table;
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.stats-row {
-    display: table-row;
-}
-
-.stats-row.header {
-    background: #f8f9fa;
-    font-weight: bold;
-    border-bottom: 2px solid #dee2e6;
-}
-
-.stats-row.even {
-    background: #f8f9fa;
-}
-
-.stats-row.odd {
-    background: white;
-}
-
-.stats-row:hover {
-    background: #e9ecef;
-}
+.stats-table { display: table; width: 100%; border-collapse: collapse; }
+.stats-row { display: table-row; }
+.stats-row.header { background: #f8f9fa; font-weight: bold; border-bottom: 2px solid #dee2e6; }
+.stats-row.even { background: #f8f9fa; }
+.stats-row.odd { background: white; }
+.stats-row:hover { background: #e9ecef; }
 
 .stats-cell {
     display: table-cell;
@@ -898,28 +323,11 @@ body {
     border-bottom: 1px solid #dee2e6;
     vertical-align: middle;
 }
-
-.stats-cell.icon {
-    width: 50px;
-    text-align: center;
-    font-size: 1.2rem;
-}
-
-.stats-cell.name {
-    width: 200px;
-}
-
+.stats-cell.icon { width: 50px; text-align: center; font-size: 1.2rem; }
+.stats-cell.name { width: 200px; }
 .stats-cell.amount,
 .stats-cell.count,
-.stats-cell.percent {
-    width: 100px;
-    text-align: right;
-}
-
-.stats-cell.percent {
-    position: relative;
-    min-width: 120px;
-}
+.stats-cell.percent { width: 100px; text-align: right; }
 
 .percent-bar {
     position: absolute;
@@ -930,20 +338,14 @@ body {
     opacity: 0.2;
     z-index: 1;
 }
+.percent-text { position: relative; z-index: 2; }
 
-.percent-text {
-    position: relative;
-    z-index: 2;
-}
-
-/* Сводная статистика */
 .summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 15px;
     margin-top: 15px;
 }
-
 .summary-card {
     background: white;
     border: 1px solid #e9ecef;
@@ -952,229 +354,47 @@ body {
     text-align: center;
     transition: transform 0.2s, box-shadow 0.2s;
 }
+.summary-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+.summary-icon { font-size: 2rem; margin-bottom: 10px; }
+.summary-title { color: #6c757d; font-size: 0.9rem; margin-bottom: 5px; }
+.summary-value { font-size: 1.5rem; font-weight: bold; color: #333; }
 
-.summary-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
+/* --------------------------------------------------------------------
+   8. ГРАФИКИ И ДАШБОРД
+   -------------------------------------------------------------------- */
+.dashboard { width: 100%; max-width: 1600px; margin: 0 auto; padding: 20px; }
 
-.summary-icon {
-    font-size: 2rem;
-    margin-bottom: 10px;
-}
-
-.summary-title {
-    color: #6c757d;
-    font-size: 0.9rem;
-    margin-bottom: 5px;
-}
-
-.summary-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #333;
-}
-
-.stats-period {
-    color: #6c757d;
-    font-size: 0.9rem;
-    font-style: italic;
-}
-
-.no-data {
-    text-align: center;
-    padding: 40px;
-    color: #6c757d;
-    font-style: italic;
-}
-
-/* Кнопки экспорта */
-.stats-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid #e9ecef;
-}
-
-/* перенос из stats.html */
-.main-container {
-	max-width: 1200px;
-	margin: 0 auto;
-	padding: 20px;
-}
-
-.page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 30px;
-	padding-bottom: 15px;
-	border-bottom: 2px solid #e9ecef;
-}
-
-.page-actions {
-	display: flex;
-	gap: 10px;
-}
-
-.stats-section {
-	margin-bottom: 30px;
-}
-
-.section-title {
-	font-size: 1.3rem;
-	margin-bottom: 15px;
-	color: #333;
-	display: flex;
-	align-items: center;
-	gap: 10px;
-}
-
-
-
-/* ============================================
-   СТИЛИ ДЛЯ ДАШБОРДА И ГРАФИКОВ
-   ============================================ */
-.dashboard {
-    width: 100%;
-    max-width: 1600px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-/* Контейнер дашборда 
-.dashboard {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-    gap: 20px;
-    width: 100%;
-    max-width: 1600px;
-    margin: 0 auto;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}*/
-
-/* Контейнер для каждого графика */
 .chart-container {
     position: relative;
-	width: 100%;
-    height: 500px;  /* ФИКСИРОВАННАЯ ВЫСОТА - Увеличиваем высоту для горизонтальных */
+    width: 100%;
+    height: 500px;
     margin-bottom: 30px;
     background: white;
-	border-radius: 8px;
+    border-radius: 8px;
     padding: 20px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-	box-sizing: border-box;
+    box-sizing: border-box;
 }
-
 .chart-container h3 {
     margin: 0 0 20px 0;
     padding: 0;
     color: #333;
     font-size: 18px;
-	font-weight: 600;
+    font-weight: 600;
     border-bottom: 2px solid #007bff;
-	text-align: center;
-}
-
-/* Сам canvas графика */
-.chart-container canvas {
-    width: 100% !important;
-    height: calc(100% - 40px) !important;
-}
-
-/* Контролы для графиков */
-.chart-controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-    padding: 10px;
-    background: #e9ecef;
-    border-radius: 4px;
-    flex-wrap: wrap;
-}
-
-.chart-controls select,
-.chart-controls input {
-    padding: 6px 10px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    font-size: 14px;
-}
-
-.chart-controls label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 14px;
-    color: #495057;
-}
-
-/* Легенда графика */
-.chart-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid #eee;
-    font-size: 12px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px;
-    border-radius: 3px;
-    background: #f8f9fa;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.legend-item:hover {
-    background: #e9ecef;
-    transform: translateY(-1px);
-}
-
-.legend-color {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-}
-
-.legend-text {
-    white-space: nowrap;
-}
-
-
-/* Заглушка для пустого графика */
-.chart-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: #6c757d;
-    font-style: italic;
     text-align: center;
-    padding: 20px;
+}
+.chart-container canvas { width: 100% !important; height: calc(100% - 40px) !important; }
+
+.charts-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    margin-top: 20px;
 }
 
-/* Индикатор загрузки */
-.chart-loading {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #007bff;
-    font-size: 14px;
-}
-
-/* Селектор типа графика */
+/* Селекторы типов графиков */
 .chart-type-selector {
     grid-column: 1 / -1;
     background: white;
@@ -1183,13 +403,7 @@ body {
     margin-bottom: 20px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-
-.chart-types {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 10px;
-}
+.chart-types { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
 
 .chart-type-btn {
     padding: 10px 15px;
@@ -1200,180 +414,21 @@ body {
     transition: all 0.3s;
     font-size: 14px;
 }
+.chart-type-btn:hover { border-color: #007bff; transform: translateY(-2px); }
+.chart-type-btn.active { background: #007bff; color: white; border-color: #007bff; }
 
-.chart-type-btn:hover {
-    border-color: #007bff;
-    transform: translateY(-2px);
-}
-
-.chart-type-btn.active {
-    background: #007bff;
-    color: white;
-    border-color: #007bff;
-}
-
-/* Горизонтальная гистограмма требует больше места по высоте */
-.chart-container.horizontal {
-    height: 600px;
-}
-
-/* Пара графиков */
-.charts-pair {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px; /* gap: 30px; */
-	width: 100%;
-	margin-top: 20px;
-}
-
-/* Стили для интерактивных графиков */
-.interactive-chart {
-    cursor: pointer;
-    transition: transform 0.2s;
-}
-
-.interactive-chart:hover {
-    transform: scale(1.01);
-}
-
-.chart-context-menu {
-    animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.menu-item {
-    padding: 8px 15px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background 0.2s;
-}
-
-.menu-item:hover {
-    background: #f5f5f5;
-}
-
-/* Стили для сравнения периодов */
-.comparison-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: bold;
-    margin-left: 5px;
-}
-
-.badge-increase {
-    background: #d4edda;
-    color: #155724;
-}
-
-.badge-decrease {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-
-/* Инструменты для графиков */
-.chart-tools {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
-    padding: 10px;
-    background: #f8f9fa;
-    border-radius: 6px;
-}
-
-.tool-btn {
-    padding: 5px 10px;
-    background: white;
+.view-types { display: flex; gap: 10px; flex-wrap: wrap; }
+.view-type-btn {
+    padding: 8px 12px;
     border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.tool-btn:hover {
-    background: #e9ecef;
-}
-
-/* === СТИЛИ ДЛЯ ИНТЕРАКТИВНОСТИ === */
-/* Уведомления и баннеры фильтров */
-.filter-notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
     background: white;
-    border: 2px solid #3498db;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 1000;
-    min-width: 300px;
-    animation: slideIn 0.3s ease-out;
-}
-
-.notification-content {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.notification-buttons {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-}
-
-.btn-small {
-    padding: 5px 12px;
-    font-size: 12px;
     border-radius: 4px;
     cursor: pointer;
-    border: none;
+    font-size: 13px;
 }
+.view-type-btn.active { background: #3498db; color: white; border-color: #3498db; }
 
-.btn-small.btn-primary {
-    background: #3498db;
-    color: white;
-}
-
-.btn-small.btn-secondary {
-    background: #95a5a6;
-    color: white;
-}
-
-@keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes slideOut {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
-}
-
-#applied-filter-banner {
-    background: #e3f2fd;
-    border: 1px solid #2196f3;
-    border-radius: 4px;
-    padding: 10px 15px;
-    margin: 10px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Стили для чекбоксов переключателей подписей */
+/* Опции графиков */
 .chart-options {
     display: flex;
     gap: 20px;
@@ -1382,7 +437,6 @@ body {
     background: #f8f9fa;
     border-radius: 6px;
 }
-
 .checkbox-label {
     display: flex;
     align-items: center;
@@ -1392,1021 +446,10 @@ body {
     color: #555;
 }
 
-.checkbox-label input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-}
-
-/* Стили для кнопок экспорта графиков */
-.export-controls {
-    display: flex;
-    gap: 10px;
-    margin: 20px 0;
-    flex-wrap: wrap;
-}
-
-.btn-export {
-    padding: 10px 15px;
-    border: none;
-    border-radius: 6px;
-    background: #f8f9fa;
-    color: #333;
-    cursor: pointer;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s;
-}
-
-.btn-export:hover {
-    background: #e9ecef;
-    transform: translateY(-2px);
-}
-
-.btn-export.btn-primary {
-    background: #3498db;
-    color: white;
-}
-
-.btn-export.btn-primary:hover {
-    background: #2980b9;
-}
-
-.btn-export.btn-secondary {
-    background: #2ecc71;
-    color: white;
-}
-
-.btn-export.btn-secondary:hover {
-    background: #27ae60;
-}
-
-/* === СТИЛИ ДЛЯ ДОПОЛНИТЕЛЬНЫХ ГРАФИКОВ === */
-/* Выбор периодов для сравнения */
-.comparison-controls {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 20px;
-    margin: 20px 0;
-    border: 2px solid #e9ecef;
-}
-
-.comparison-settings {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.setting-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.setting-group label {
-    min-width: 120px;
-    font-weight: 500;
-}
-
-.periods-selector {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.period-select {
-    flex: 1;
-    min-width: 200px;
-}
-
-.period-select label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
-}
-
-.period-select select {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: white;
-}
-
-.vs-text {
-    font-size: 24px;
-    font-weight: bold;
-    color: #666;
-    padding: 0 10px;
-}
-
-.comparison-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.comparison-stats {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid #dee2e6;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-}
-
-.stat-card {
-    background: white;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    text-align: center;
-}
-
-.stat-card.positive {
-    border-left: 4px solid #2ecc71;
-}
-
-.stat-card.negative {
-    border-left: 4px solid #e74c3c;
-}
-
-.stat-title {
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 5px;
-}
-
-.stat-value {
-    font-size: 20px;
-    font-weight: bold;
-    color: #333;
-}
-
-.stat-percent {
-    font-size: 12px;
-    color: #999;
-    margin-top: 5px;
-}
-
-/* Тепловая карта */
-.heatmap-controls {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 20px;
-    margin: 20px 0;
-    border: 2px solid #e9ecef;
-}
-
-.heatmap-settings {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.period-selector {
-    display: flex;
-    gap: 30px;
-    flex-wrap: wrap;
-}
-
-.radio-label {
-    display: inline-flex;
-    align-items: center;
-    margin-left: 15px;
-    cursor: pointer;
-}
-
-.radio-label input {
-    margin-right: 5px;
-    cursor: pointer;
-}
-
-.heatmap-legend {
-    background: white;
-    padding: 10px 15px;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.color-scale {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.gradient-box {
-    width: 200px;
-    height: 20px;
-    background: linear-gradient(to right, #e8f5e9, #4caf50, #1b5e20);
-    border-radius: 4px;
-    border: 1px solid #ddd;
-}
-
-.heatmap-stats {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid #dee2e6;
-}
-
-/* Совмещённый график */
-.combo-controls {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 20px;
-    margin: 20px 0;
-    border: 2px solid #e9ecef;
-}
-
-.combo-settings {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.period-selector {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.combo-legend {
-    display: flex;
-    gap: 20px;
-    background: white;
-    padding: 10px 20px;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.color-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 3px;
-}
-
-.combo-stats {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid #dee2e6;
-}
-
-/* Специфические стили для страницы анализа цен */
-.price-analysis-container {
-	max-width: 1400px;
-	margin: 0 auto;
-	padding: 20px;
-}
-
-.page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 30px;
-}
-
-.page-header h1 {
-	margin: 0;
-	color: #2c3e50;
-}
-
-.nav-buttons {
-	display: flex;
-	gap: 10px;
-}
-
-.selection-panel {
-	background: #f8f9fa;
-	border-radius: 8px;
-	padding: 20px;
-	margin-bottom: 20px;
-	border: 2px solid #e9ecef;
-}
-
-.selection-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-	gap: 15px;
-	align-items: end;
-}
-
-.form-group {
-	display: flex;
-	flex-direction: column;
-	gap: 5px;
-}
-
-.form-group label {
-	font-weight: 500;
-	color: #495057;
-	font-size: 14px;
-}
-
-.form-group select, 
-.form-group input {
-	padding: 10px;
-	border: 1px solid #ced4da;
-	border-radius: 4px;
-	font-size: 14px;
-	background: white;
-}
-
-.form-group select:focus,
-.form-group input:focus {
-	border-color: #3498db;
-	outline: none;
-	box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
-}
-
-.action-buttons {
-	display: flex;
-	gap: 10px;
-	margin-top: 20px;
-	justify-content: flex-end;
-}
-
-.stats-panel {
-	background: white;
-	border-radius: 8px;
-	padding: 20px;
-	margin-bottom: 20px;
-	box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.stats-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-	gap: 15px;
-}
-
-.stat-card {
-	padding: 15px;
-	background: #f8f9fa;
-	border-radius: 6px;
-	border-left: 4px solid;
-}
-
-.stat-card.main {
-	border-left-color: #3498db;
-}
-
-.stat-card.trend {
-	border-left-color: #e74c3c;
-}
-
-.stat-card.normalized {
-	border-left-color: #2ecc71;
-}
-
-.stat-title {
-	font-size: 13px;
-	color: #6c757d;
-	margin-bottom: 5px;
-}
-
-.stat-value {
-	font-size: 24px;
-	font-weight: 600;
-	color: #212529;
-	line-height: 1.2;
-}
-
-.stat-unit {
-	font-size: 14px;
-	color: #6c757d;
-	margin-left: 5px;
-}
-
-.stat-desc {
-	font-size: 12px;
-	color: #6c757d;
-	margin-top: 5px;
-}
-
-.trend-up {
-	color: #e74c3c;
-}
-
-.trend-down {
-	color: #27ae60;
-}
-
-.chart-container {
-	background: white;
-	border-radius: 8px;
-	padding: 20px;
-	margin-bottom: 20px;
-	box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.chart-container h3 {
-	margin-top: 0;
-	margin-bottom: 20px;
-	color: #2c3e50;
-	font-size: 18px;
-}
-
-.chart-wrapper {
-	position: relative;
-	height: 400px;
-	width: 100%;
-}
-
-.chart-options {
-	display: flex;
-	gap: 15px;
-	margin-top: 15px;
-	padding-top: 15px;
-	border-top: 1px solid #dee2e6;
-}
-
-.option-group {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-}
-
-.checkbox-label {
-	display: flex;
-	align-items: center;
-	gap: 5px;
-	cursor: pointer;
-	font-size: 14px;
-}
-
-.info-message {
-	background: #fff3cd;
-	border: 1px solid #ffeeba;
-	color: #856404;
-	padding: 15px 20px;
-	border-radius: 8px;
-	margin-bottom: 20px;
-	display: flex;
-	align-items: center;
-	gap: 10px;
-}
-
-.info-message.warning {
-	background: #f8d7da;
-	border-color: #f5c6cb;
-	color: #721c24;
-}
-
-.info-message.success {
-	background: #d4edda;
-	border-color: #c3e6cb;
-	color: #155724;
-}
-
-.purchase-table {
-	width: 100%;
-	border-collapse: collapse;
-	margin-top: 20px;
-	font-size: 14px;
-}
-
-.purchase-table th {
-	background: #f8f9fa;
-	padding: 12px;
-	text-align: left;
-	font-weight: 600;
-	color: #495057;
-}
-
-.purchase-table td {
-	padding: 10px 12px;
-	border-bottom: 1px solid #dee2e6;
-}
-
-.purchase-table tr:hover {
-	background: #f8f9fa;
-}
-
-.store-badge {
-	background: #e9ecef;
-	padding: 4px 8px;
-	border-radius: 4px;
-	font-size: 12px;
-}
-
-.price-highlight {
-	font-weight: 600;
-	color: #e74c3c;
-}
-
-.price-lowlight {
-	font-weight: 600;
-	color: #27ae60;
-}
-
-@media (max-width: 768px) {
-	.selection-grid {
-		grid-template-columns: 1fr;
-	}
-	
-	.stats-grid {
-		grid-template-columns: 1fr;
-	}
-	
-	.chart-wrapper {
-		height: 300px;
-	}
-}
-
-/* ===== АНИМАЦИИ ДЛЯ ГРАФИКОВ ===== */
-
-/* Появление графиков */
-@keyframes chartAppear {
-    0% {
-        opacity: 0;
-        transform: scale(0.95) translateY(10px);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-.chart-appear {
-    animation: chartAppear 0.5s ease-out forwards;
-}
-
-/* Анимация загрузки */
-@keyframes pulse {
-    0% { opacity: 0.6; }
-    50% { opacity: 1; }
-    100% { opacity: 0.6; }
-}
-
-.chart-loading {
-    position: relative;
-    min-height: 200px;
-}
-
-.chart-loading::after {
-    content: "🔄 Загрузка...";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #3498db;
-    font-size: 16px;
-    animation: pulse 1.5s infinite;
-}
-
-/* Эффекты при наведении на карточки */
-.stat-card {
-    transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 15px rgba(0,0,0,0.2);
-}
-
-/* Плавное появление тултипов */
-[data-tooltip] {
-    position: relative;
-    cursor: help;
-}
-
-[data-tooltip]:before {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(-5px);
-    background: rgba(0,0,0,0.8);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.2s ease;
-    pointer-events: none;
-    z-index: 1000;
-}
-
-[data-tooltip]:hover:before {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(-50%) translateY(-10px);
-}
-
-/* Анимация переключения вкладок */
-.chart-type-btn {
-    transition: all 0.2s ease;
-}
-
-.chart-type-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(52,152,219,0.3);
-}
-
-.chart-type-btn.active {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 3px rgba(52,152,219,0.3);
-}
-
-/* Плавное изменение размеров графиков */
-.chart-container {
-    transition: all 0.3s ease;
-}
-
-.chart-container:hover {
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-}
-
-/* Анимация для сообщений */
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOutRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-}
-
-.filter-notification {
-    animation: slideInRight 0.3s ease-out;
-}
-
-.filter-notification.hiding {
-    animation: slideOutRight 0.3s ease-out;
-}
-
-/* Анимация для кнопок */
-.btn-primary, .btn-secondary {
-    transition: all 0.2s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.btn-primary:after, .btn-secondary:after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 5px;
-    height: 5px;
-    background: rgba(255,255,255,0.5);
-    opacity: 0;
-    border-radius: 100%;
-    transform: scale(1, 1) translate(-50%);
-    transform-origin: 50% 50%;
-}
-
-.btn-primary:focus:not(:active):after,
-.btn-secondary:focus:not(:active):after {
-    animation: ripple 0.6s ease-out;
-}
-
-@keyframes ripple {
-    0% {
-        transform: scale(0, 0);
-        opacity: 0.5;
-    }
-    100% {
-        transform: scale(20, 20);
-        opacity: 0;
-    }
-}
-
-/* Анимация для селектов */
-select {
-    transition: all 0.2s ease;
-}
-
-select:hover {
-    border-color: #3498db;
-    box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
-}
-
-select:focus {
-    border-color: #3498db;
-    box-shadow: 0 0 0 3px rgba(52,152,219,0.3);
-    transform: translateY(-1px);
-}
-
-/* ===== УЛУЧШЕННАЯ АДАПТИВНОСТЬ ===== */
-
-/* Планшеты (768px - 1024px) */
-@media (max-width: 1024px) {
-    .dashboard {
-        padding: 15px;
-    }
-    
-    .charts-pair {
-        grid-template-columns: 1fr;  /* Графики друг под другом */
-        gap: 20px;
-    }
-    
-    .chart-container {
-        height: 450px;  /* Чуть меньше высота */
-        margin-bottom: 20px;
-    }
-    
-    /* Уменьшаем отступы в фильтрах */
-    .filters-panel {
-        padding: 15px;
-        flex-wrap: wrap;
-    }
-    
-    .filter-group {
-        flex: 1 1 calc(50% - 10px);
-        min-width: 200px;
-    }
-    
-    .filter-group select {
-        width: 100%;
-    }
-    
-    /* Кнопки навигации */
-    .chart-type-selector,
-    .view-types {
-        overflow-x: auto;
-        white-space: nowrap;
-        padding: 10px 0;
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    .chart-type-btn,
-    .view-type-btn {
-        display: inline-block;
-        margin: 0 5px;
-    }
-}
-
-/* Мобильные устройства (до 767px) */
-@media (max-width: 767px) {
-    /* Заголовки */
-    h1 {
-        font-size: 24px;
-        margin: 15px 0;
-    }
-    
-    /* Навигация */
-    .app-nav {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    
-    .app-nav button {
-        margin: 5px;
-        padding: 8px 12px;
-        font-size: 14px;
-    }
-    
-    /* Панель фильтров */
-    .filters-panel {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 10px;
-    }
-    
-    .filter-group {
-        flex: 1 1 100%;
-        margin-bottom: 10px;
-    }
-    
-    .filter-group label {
-        min-width: auto;
-        margin-bottom: 5px;
-    }
-    
-    .filter-group select,
-    .filter-group input {
-        width: 100%;
-    }
-    
-    /* Кнопки действий */
-    .filter-group button {
-        width: 100%;
-        margin: 5px 0;
-    }
-    
-    /* Контейнеры графиков */
-    .chart-container {
-        height: 350px;
-        padding: 10px;
-    }
-    
-    .chart-container h3 {
-        font-size: 16px;
-        margin-bottom: 10px;
-    }
-    
-    /* Специальные панели */
-    .comparison-controls,
-    .heatmap-controls,
-    .combo-controls {
-        padding: 15px;
-    }
-    
-    .periods-selector {
-        flex-direction: column;
-    }
-    
-    .vs-text {
-        margin: 10px 0;
-    }
-    
-    .period-select {
-        width: 100%;
-    }
-    
-    /* Статистика */
-    .stats-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-    
-    .stat-card {
-        padding: 12px;
-    }
-    
-    /* Экспорт */
-    .export-controls {
-        flex-direction: column;
-    }
-    
-    .btn-export {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    /* Таблицы */
-    .purchase-table {
-        font-size: 12px;
-    }
-    
-    .purchase-table th,
-    .purchase-table td {
-        padding: 8px 5px;
-    }
-    
-    /* Чекбоксы и опции */
-    .chart-options {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-    }
-    
-    .checkbox-label {
-        width: 100%;
-    }
-    
-    /* Уведомления */
-    .filter-notification {
-        width: 90%;
-        right: 5%;
-        left: 5%;
-        min-width: auto;
-    }
-}
-
-/* Очень маленькие экраны (до 480px) */
-@media (max-width: 480px) {
-    .chart-container {
-        height: 300px;
-    }
-    
-    .chart-container h3 {
-        font-size: 14px;
-    }
-    
-    .stat-value {
-        font-size: 18px;
-    }
-    
-    .stat-title {
-        font-size: 12px;
-    }
-    
-    /* Скрываем некоторые подписи на графиках */
-    .chart-container canvas {
-        /* Chart.js сам адаптируется */
-    }
-    
-    /* Упрощаем навигацию */
-    .chart-type-selector h3,
-    .view-types h3,
-    .export-controls h3 {
-        display: none;
-    }
-    
-    /* Компактные кнопки */
-    .chart-type-btn,
-    .view-type-btn {
-        padding: 6px 10px;
-        font-size: 12px;
-    }
-}
-
-/* Горизонтальная ориентация на мобильных */
-@media (max-width: 900px) and (orientation: landscape) {
-    .charts-pair {
-        grid-template-columns: 1fr 1fr;  /* Снова два графика в ряд */
-    }
-    
-    .chart-container {
-        height: 300px;
-    }
-}
-
-/* Поддержка темной темы (опционально) */
-@media (prefers-color-scheme: dark) {
-    /* Можно добавить позже */
-}
-
-/* Улучшения для touch-устройств */
-@media (hover: none) and (pointer: coarse) {
-    /* Увеличиваем области касания */
-    .chart-type-btn,
-    .view-type-btn,
-    .btn-primary,
-    .btn-secondary,
-    .btn-export {
-        min-height: 44px;
-        min-width: 44px;
-    }
-    
-    .filter-group select,
-    .filter-group input {
-        min-height: 44px;
-    }
-    
-    /* Убираем hover-эффекты на touch-устройствах */
-    .chart-type-btn:hover,
-    .view-type-btn:hover {
-        transform: none;
-    }
-}
-
-/* Анимации для адаптивности */
-.chart-container,
-.filters-panel,
-.stat-card {
-    transition: all 0.3s ease;
-}
-
-/* Индикатор загрузки для медленных соединений */
-.loading-indicator {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    background: #3498db;
-    color: white;
-    padding: 8px 15px;
-    border-radius: 20px;
-    font-size: 14px;
-    z-index: 1000;
-    animation: pulse 1.5s infinite;
-    box-shadow: 0 2px 10px rgba(52,152,219,0.3);
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-/* ===== ПАНЕЛЬ ЭКСПОРТА ДАННЫХ ===== */
-.export-panel {
-    position: relative;
-    display: inline-block;
-    margin-left: 15px;
-}
+/* --------------------------------------------------------------------
+   9. ЭКСПОРТ
+   -------------------------------------------------------------------- */
+.export-panel { position: relative; display: inline-block; margin-left: 15px; }
 
 .btn-export-dropdown {
     background: #3498db;
@@ -2419,17 +462,8 @@ select:focus {
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: background 0.2s;
 }
-
-.btn-export-dropdown:hover {
-    background: #2980b9;
-}
-
-.caret {
-    font-size: 12px;
-    margin-left: 5px;
-}
+.btn-export-dropdown:hover { background: #2980b9; }
 
 .export-menu {
     position: absolute;
@@ -2443,7 +477,6 @@ select:focus {
     margin-top: 10px;
     border: 1px solid #e0e0e0;
 }
-
 .export-menu-header {
     padding: 12px 15px;
     background: #f8f9fa;
@@ -2451,7 +484,6 @@ select:focus {
     font-size: 14px;
     color: #2c3e50;
 }
-
 .export-option {
     display: flex;
     flex-direction: column;
@@ -2467,23 +499,10 @@ select:focus {
     font-weight: 500;
     color: #2c3e50;
 }
+.export-option:hover { background: #f0f7ff; }
+.export-option small { font-size: 12px; font-weight: normal; color: #7f8c8d; margin-top: 3px; }
 
-.export-option:hover {
-    background: #f0f7ff;
-}
-
-.export-option small {
-    font-size: 12px;
-    font-weight: normal;
-    color: #7f8c8d;
-    margin-top: 3px;
-}
-
-.export-settings {
-    padding: 15px;
-    border-bottom: 1px solid #e0e0e0;
-}
-
+.export-settings { padding: 15px; border-bottom: 1px solid #e0e0e0; }
 .export-checkbox {
     display: flex;
     align-items: center;
@@ -2494,12 +513,6 @@ select:focus {
     cursor: pointer;
 }
 
-.export-checkbox input {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-}
-
 .export-actions {
     display: flex;
     gap: 10px;
@@ -2507,48 +520,46 @@ select:focus {
     background: #f8f9fa;
     border-top: 1px solid #e0e0e0;
 }
+.export-actions button { flex: 1; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
 
-.export-actions button {
-    flex: 1;
-    padding: 8px 12px;
+.btn-export {
+    padding: 10px 15px;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
+    background: #f8f9fa;
+    color: #333;
     cursor: pointer;
     font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
 }
+.btn-export:hover { background: #e9ecef; transform: translateY(-2px); }
 
-.export-actions .btn-primary {
-    background: #3498db;
-    color: white;
+/* --------------------------------------------------------------------
+   10. АНИМАЦИИ
+   -------------------------------------------------------------------- */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalSlideIn {
+    from { transform: translateY(-50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
-
-.export-actions .btn-secondary {
-    background: #95a5a6;
-    color: white;
-}
-
-.export-notification {
-    animation: slideInRight 0.3s ease-out;
-}
-
 @keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
+@keyframes chartAppear {
+    0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.chart-appear { animation: chartAppear 0.5s ease-out forwards; }
 
-@keyframes slideOutRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-}
+/* --------------------------------------------------------------------
+   11. УТИЛИТЫ
+   -------------------------------------------------------------------- */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.mt-10 { margin-top: 10px; }
+.mb-10 { margin-bottom: 10px; }
+.hidden { display: none; }

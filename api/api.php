@@ -66,15 +66,29 @@ function handlePurchases($db) {
 
     // --- GET: Получение списка покупок ---
     if ($method === 'GET') {
-        $sql = "SELECT s.*, 
-                       st.shop as store_name, st.street, st.house,
-                       l.town_ru as city_name,
-                       c.name as category_name, c.icon as category_icon, c.color as category_color
-                FROM shops s
-                LEFT JOIN stores st ON s.store_id = st.id
-                LEFT JOIN locality l ON st.locality_id = l.id
-                LEFT JOIN categories c ON s.category_id = c.id
-                ORDER BY s.date DESC";
+        // Получение всех покупок с JOIN магазинов и городов
+		$sql = "SELECT 
+					s.*, 
+					st.shop as store_name, 
+					st.street, 
+					st.house,
+					l.town_ru as city_name,
+					-- Создаём поле full_address прямо в SQL
+					CONCAT(
+						COALESCE(l.town_ru, ''), 
+						CASE WHEN l.town_ru IS NOT NULL AND l.town_ru != '' THEN ', ' ELSE '' END,
+						COALESCE(st.street, ''), 
+						CASE WHEN st.street IS NOT NULL AND st.street != '' THEN ', д. ' ELSE '' END,
+						COALESCE(st.house, '')
+					) as full_address,
+					c.name as category_name, 
+					c.icon as category_icon, 
+					c.color as category_color
+				FROM shops s
+				LEFT JOIN stores st ON s.store_id = st.id
+				LEFT JOIN locality l ON st.locality_id = l.id
+				LEFT JOIN categories c ON s.category_id = c.id
+				ORDER BY s.date DESC";
                 
         $result = $db->query($sql);
         if (!$result) {
