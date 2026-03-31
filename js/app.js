@@ -273,24 +273,50 @@ class ShoppingApp {
                 width: 70,
                 sorter: 'number',
                 headerFilter: 'input',
-                headerFilterPlaceholder: 'Фильтр...'
+                headerFilterPlaceholder: 'Поиск'
             },
             { 
                 title: 'Дата', 
                 field: 'date',
-                width: 100,
+                width: 110, // 100
                 sorter: 'date',
                 headerFilter: 'input',
-                headerFilterPlaceholder: 'ГГГГ-ММ-ДД',
-                formatter: (cell) => {
-                    const date = cell.getValue();
-                    return date ? new Date(date).toLocaleDateString('ru-RU') : '';
-                }
+                headerFilterPlaceholder: 'ДД.ММ.ГГГГ',
+                // Кастомная функция форматирования для отображения
+				formatter: (cell) => {
+					const value = cell.getValue();
+					return this.formatDisplayDate(value);
+				},
+				// Кастомная функция для фильтрации
+				headerFilterFunc: (headerValue, rowValue, rowData, filterParams) => {
+					if (!headerValue) return true;
+					
+					// Преобразуем введенное значение ДД.ММ.ГГГГ в объект Date
+					const parts = headerValue.split('.');
+					if (parts.length !== 3) return false;
+					
+					const day = parseInt(parts[0], 10);
+					const month = parseInt(parts[1], 10) - 1;
+					const year = parseInt(parts[2], 10);
+					
+					const filterDate = new Date(year, month, day);
+					
+					// Преобразуем дату из строки YYYY-MM-DD в объект Date
+					const rowDateParts = rowValue.split('-');
+					const rowDate = new Date(
+						parseInt(rowDateParts[0], 10),
+						parseInt(rowDateParts[1], 10) - 1,
+						parseInt(rowDateParts[2], 10)
+					);
+					
+					// Сравниваем даты (без учета времени)
+					return filterDate.toDateString() === rowDate.toDateString();
+				}
             },
             {
                 title: "Категория",
                 field: "category_name",
-                width: 120,
+                width: 150, // 120
                 headerFilter: "input",
                 headerFilterPlaceholder: 'Фильтр...',
                 formatter: (cell) => {
@@ -306,40 +332,72 @@ class ShoppingApp {
             { 
 				title: 'Магазин', 
 				field: 'store_name',  // Проверьте имя поля в консоли
-				width: 150,
+				width: 120, // 150
 				headerFilter: 'input',
 				headerFilterPlaceholder: 'Поиск...',
+				// РАЗРЕШАЕМ ПЕРЕНОС СЛОВ
+				formatter: (cell) => {
+					const value = cell.getValue();
+					return value ? value : '-';
+				},
+				cssClass: 'cell-wrap-text', // Добавляем CSS класс
+				variableHeight: true // Разрешаем переменную высоту строки
 			},
             { 
                 title: 'Адрес', 
                 field: 'full_address',
-                width: 200,
+                width: 140, // 200
                 headerFilter: 'input',
                 headerFilterPlaceholder: 'Поиск...',
 				formatter: (cell) => {
 					const value = cell.getValue();
 					return value || '-';
-				}
+				},
+				cssClass: 'cell-wrap-text', // Добавляем CSS класс
+				variableHeight: true // Разрешаем переменную высоту строки
             },
             { 
                 title: 'Товар', 
                 field: 'name',
-                width: 150,
+                width: 110, // 150
                 headerFilter: 'input',
                 headerFilterPlaceholder: 'Поиск...'
             },
             {
                 title: 'Характеристики',
                 field: 'characteristic',
-                width: 150,
-                formatter: (cell) => cell.getValue() || '-',
+                width: 200, // 150
+                formatter: (cell) => {
+					const row = cell.getRow().getData();
+					const characteristic = row.characteristic || '';
+					const keywords = row.search_keywords || '';
+					
+					// Формируем HTML для отображения
+					let html = `<div class="characteristic-cell">`;
+					
+					// Основная характеристика
+					html += `<div class="characteristic-main">${characteristic || '-'}</div>`;
+					
+					// Ключевые слова (если есть)
+					if (keywords && keywords.trim() !== '') {
+						html += `<div class="characteristic-keywords">🔑 <em>${keywords}</em></div>`;
+					} else {
+						html += `<div class="characteristic-keywords text-muted">🔑 <em>нет ключевых слов</em></div>`;
+					}
+					
+					html += `</div>`;
+					return html;
+				},
                 headerFilter: 'input',
-                headerFilterPlaceholder: 'Поиск...'
+                headerFilterPlaceholder: 'Поиск...',
+				cssClass: 'cell-wrap-text cell-small-font', // Специальный класс для характеристик
+				variableHeight: true, // Разрешаем переменную высоту строки
+				tooltip: true // Всплывающая подсказка при наведении
             },
             { 
                 title: 'Кол-во', 
                 field: 'quantity',
-                width: 90,
+                width: 80, // 90
                 hozAlign: 'right',
                 headerFilter: 'number',
                 headerFilterPlaceholder: 'Число...',
@@ -347,13 +405,14 @@ class ShoppingApp {
                     const row = cell.getRow().getData();
                     const quantity = parseFloat(cell.getValue());
 					return `${!isNaN(quantity) ? quantity.toFixed(3) : '0.000'} ${row.item || 'шт.'}`;
-
-                }
+				},
+				cssClass: 'cell-wrap-text', // Добавляем CSS класс
+				variableHeight: true // Разрешаем переменную высоту строки
             },
             { 
                 title: 'Цена, ₽', 
                 field: 'price',
-                width: 100,
+                width: 90, // 100
                 hozAlign: 'right',
                 headerFilter: 'number',
                 headerFilterPlaceholder: 'Число...',
@@ -365,7 +424,7 @@ class ShoppingApp {
             { 
                 title: 'Сумма, ₽', 
                 field: 'amount',
-                width: 100,
+                width: 90, // 100
                 hozAlign: 'right',
                 headerFilter: 'number',
                 headerFilterPlaceholder: 'Число...',
@@ -376,7 +435,7 @@ class ShoppingApp {
             },
             {
                 title: 'Действия',
-                width: 100,
+                width: 120, // 100
                 hozAlign: 'center',
                 formatter: (cell) => {
 					const row = cell.getRow();
@@ -403,6 +462,15 @@ class ShoppingApp {
             }
         ];
     }
+
+	/**
+	 * Форматирование даты для отображения
+	 */
+	formatDisplayDate(dateStr) {
+		if (!dateStr) return '';
+		const [year, month, day] = dateStr.split('-');
+		return `${day}.${month}.${year}`;
+	}
 
     /**
      * НАСТРОЙКА СОБЫТИЙ
@@ -511,6 +579,12 @@ class ShoppingApp {
             dateInput.valueAsDate = new Date();
             dateInput.value = new Date().toISOString().split('T')[0];
         }
+		
+		// ДОБАВЛЯЕМ: загрузка последних значений формы
+		// Небольшая задержка, чтобы элементы успели заполниться
+		setTimeout(() => {
+			this.applyLastFormValues();
+		}, 100);
     }
 
     loadStoresIntoForm() {
@@ -579,6 +653,20 @@ class ShoppingApp {
         this.addSafeEventListener('cancel-purchase', 'click', () => {
             document.getElementById('purchase-modal').style.display = 'none';
         });
+		
+		// ДОБАВЛЯЕМ: обработчик кнопки копирования
+		this.addSafeEventListener('copy-last', 'click', () => {
+			this.applyLastFormValues();
+			this.showNotification('Данные из последней покупки скопированы', 'info');
+		});
+		
+		// ДОБАВЛЯЕМ: кнопка очистки сохранённых значений
+		this.addSafeEventListener('clear-last', 'click', () => {
+			if (confirm('Очистить сохранённый шаблон? Следующая новая покупка будет с пустыми полями.')) {
+				this.clearLastFormValues();
+				this.showNotification('Сохранённый шаблон очищен', 'success');
+			}
+		});
         
         // Авторасчёт суммы при изменении цены или количества
         document.getElementById('purchase-price')?.addEventListener('input', () => this.autoCalculate());
@@ -630,9 +718,26 @@ class ShoppingApp {
         } else {
             title.textContent = '📝 Новая покупка';
             this.resetForm();
+			
+			// Пытаемся применить последние значения
+			const hasLastValues = this.applyLastFormValues();
+			
+			// Если нет сохранённых значений, устанавливаем сегодняшнюю дату
+			if (!hasLastValues) {
+				const dateInput = document.getElementById('purchase-date');
+				if (dateInput && !dateInput.value) {
+					dateInput.valueAsDate = new Date();
+					dateInput.value = new Date().toISOString().split('T')[0];
+				}
+			}
+			
+			// Устанавливаем фокус на поле "Товар" для быстрого ввода
+			setTimeout(() => {
+				document.getElementById('purchase-name').focus();
+			}, 150);
         }
-        
-        modal.style.display = 'block';
+		
+		modal.style.display = 'block';
     }
 
     fillFormWithData(purchaseData) {
@@ -661,6 +766,12 @@ class ShoppingApp {
         document.getElementById('purchase-unit').value = purchaseData.item || 'шт.';
         document.getElementById('purchase-amount').value = purchaseData.amount || '';
         document.getElementById('purchase-characteristics').value = purchaseData.characteristic || '';
+		
+		// ДОБАВЛЯЕМ: заполнение поля ключевых слов
+		const keywordsField = document.getElementById('purchase-keywords');
+		if (keywordsField) {
+			keywordsField.value = purchaseData.search_keywords || '';
+		}
     }
 
     resetForm() {
@@ -669,11 +780,50 @@ class ShoppingApp {
             form.reset();
         }
         
+		// Сбрасываем ID (для новой записи)
         document.getElementById('purchase-id').value = '';
-        document.getElementById('purchase-date').valueAsDate = new Date();
-        document.getElementById('purchase-quantity').value = '1';
-        document.getElementById('purchase-unit').value = 'шт.';
-        document.getElementById('purchase-category').value = '';
+		
+		
+        // Устанавливаем дату по умолчанию (сегодня)
+		const dateInput = document.getElementById('purchase-date');
+		if (dateInput) {
+			dateInput.valueAsDate = new Date();
+			dateInput.value = new Date().toISOString().split('T')[0];
+		}
+        
+		// Сбрасываем количество на 1
+		const quantityField = document.getElementById('purchase-quantity');
+		if (quantityField) {
+			quantityField.value = '1';
+		}
+		
+        // Сбрасываем единицу измерения на "шт."
+		const unitSelect = document.getElementById('purchase-unit');
+		if (unitSelect) {
+			unitSelect.value = 'шт.';
+		}
+		
+		// Сбрасываем цену и сумму
+		const priceField = document.getElementById('purchase-price');
+		const amountField = document.getElementById('purchase-amount');
+		if (priceField) priceField.value = '';
+		if (amountField) amountField.value = '';
+		
+        // Сбрасываем поле категории
+		const categorySelect = document.getElementById('purchase-category');
+		if (categorySelect) categorySelect.value = '';
+		
+		// Сбрасываем поле магазина
+		const storeSelect = document.getElementById('purchase-store');
+		if (storeSelect) storeSelect.value = '';
+		
+		// ДОБАВЛЯЕМ: сброс поля ключевых слов
+		const keywordsField = document.getElementById('purchase-keywords');
+		if (keywordsField) {
+			keywordsField.value = '';
+		}
+		
+		console.log('Форма сброшена к значениям по умолчанию');
     }
 
     validateForm() {
@@ -715,6 +865,12 @@ class ShoppingApp {
                 characteristic: document.getElementById('purchase-characteristics').value,
                 amount: parseFloat(document.getElementById('purchase-amount').value)
             };
+			
+			// ДОБАВЛЯЕМ: поле ключевых слов
+			const keywordsField = document.getElementById('purchase-keywords');
+			if (keywordsField) {
+				formData.search_keywords = keywordsField.value;
+			}
             
             const purchaseId = document.getElementById('purchase-id').value;
             
@@ -732,16 +888,45 @@ class ShoppingApp {
                 result = await apiClient.addPurchase(formData);
                 if (result.success) {
                     this.showNotification('Покупка добавлена!', 'success');
-                    document.getElementById('purchase-modal').style.display = 'none';
-                    await this.refreshData();
-                }
-            }
+					
+					// ДОБАВЛЯЕМ: сохраняем последние значения формы
+					this.saveLastFormValues();
+					
+                    // Спрашиваем, нужно ли добавить ещё одну покупку
+					const addAnother = confirm('Покупка добавлена. Добавить ещё одну?');
+					
+					if (addAnother) {
+						// Очищаем форму, но оставляем сохранённые значения (дата, магазин, категория)
+						this.resetForm();
+						this.applyLastFormValues();
+						// Устанавливаем фокус на поле "Товар"
+						document.getElementById('purchase-name').focus();
+					} else {
+						document.getElementById('purchase-modal').style.display = 'none';
+						await this.refreshData();
+					}
+				}
+			}
             
         } catch (error) {
             console.error('Ошибка сохранения покупки:', error);
             this.showNotification('Ошибка: ' + error.message, 'error');
         }
     }
+	
+	/**
+     * Сохранить и продолжить заполнение
+     */
+	async saveAndContinue() {
+		await this.savePurchase(); // Сохраняем
+		// После сохранения очищаем поля, но оставляем магазин/категорию
+		// document.getElementById('purchase-name').value = '';
+		document.getElementById('purchase-price').value = '';
+		document.getElementById('purchase-quantity').value = '1';
+		document.getElementById('purchase-amount').value = '';
+		// document.getElementById('purchase-characteristics').value = '';
+		document.getElementById('purchase-name').focus();
+	}
 
     async deletePurchase(id) {
         if (!confirm('Удалить эту покупку?')) return;
@@ -1015,6 +1200,147 @@ class ShoppingApp {
         // Обновляем панель
         this.updateTableInfoPanel();
     }
+	
+	/**
+	 * Сохранить последние значения формы в localStorage
+	 */
+	saveLastFormValues() {
+		const formData = {
+			store_id: document.getElementById('purchase-store').value,
+			category_id: document.getElementById('purchase-category').value,
+			name: document.getElementById('purchase-name').value,
+			characteristic: document.getElementById('purchase-characteristics').value,
+			search_keywords: document.getElementById('purchase-keywords')?.value || '',
+			item: document.getElementById('purchase-unit').value,
+			date: document.getElementById('purchase-date').value,
+			timestamp: Date.now()
+		};
+		
+		// Сохраняем только если есть значения
+		if (formData.store_id || formData.category_id || formData.name) {
+			localStorage.setItem('last_purchase_form', JSON.stringify(formData));
+			console.log('Последние значения формы сохранены:', {
+				date: formData.date,
+				store: formData.store_id,
+				category: formData.category_id,
+				name: formData.name,
+				characteristic: formData.characteristic?.substring(0, 50) + '...',
+				keywords: formData.search_keywords
+			});
+		}
+	}
+
+	/**
+	 * Загрузить последние значения формы из localStorage
+	 */
+	loadLastFormValues() {
+		try {
+			const saved = localStorage.getItem('last_purchase_form');
+			if (!saved) return null;
+			
+			const formData = JSON.parse(saved);
+			
+			// Проверяем, не устарели ли данные (более 1 часа)
+			if (formData.timestamp && (Date.now() - formData.timestamp) > 60 * 60 * 1000) {
+				localStorage.removeItem('last_purchase_form');
+				return null;
+			}
+			
+			return formData;
+		} catch (error) {
+			console.error('Ошибка загрузки последних значений:', error);
+			return null;
+		}
+	}
+
+	/**
+	 * Применить последние значения к форме
+	 */
+	applyLastFormValues() {
+		const lastValues = this.loadLastFormValues();
+		if (!lastValues) return false;
+		
+		let applied = false;
+		
+		// Применяем дату
+		if (lastValues.date) {
+			const dateField = document.getElementById('purchase-date');
+			if (dateField) {
+				dateField.value = lastValues.date;
+				applied = true;
+			}
+		}
+		
+		// Применяем магазин
+		if (lastValues.store_id) {
+			const storeSelect = document.getElementById('purchase-store');
+			if (storeSelect && storeSelect.querySelector(`option[value="${lastValues.store_id}"]`)) {
+				storeSelect.value = lastValues.store_id;
+				applied = true;
+			}
+		}
+		
+		// Применяем категорию
+		if (lastValues.category_id) {
+			const categorySelect = document.getElementById('purchase-category');
+			if (categorySelect && categorySelect.querySelector(`option[value="${lastValues.category_id}"]`)) {
+				categorySelect.value = lastValues.category_id;
+				applied = true;
+			}
+		}
+		
+		// Применяем единицу измерения
+		if (lastValues.item) {
+			const unitSelect = document.getElementById('purchase-unit');
+			if (unitSelect && unitSelect.querySelector(`option[value="${lastValues.item}"]`)) {
+				unitSelect.value = lastValues.item;
+				applied = true;
+			}
+		}
+		
+		// Применяем название товара
+		if (lastValues.name) {
+			const nameField = document.getElementById('purchase-name');
+			if (nameField) {
+				nameField.value = lastValues.name;
+				applied = true;
+			}
+		}
+		
+		// Применяем ключевые слова
+		if (lastValues.search_keywords) {
+			const keywordsField = document.getElementById('purchase-keywords');
+			if (keywordsField) {
+				keywordsField.value = lastValues.search_keywords;
+				applied = true;
+			}
+		}
+		
+		// Применяем характеристики товара
+		if (lastValues.characteristic) {
+			const characteristicField = document.getElementById('purchase-characteristics');
+			if (characteristicField) {
+				characteristicField.value = lastValues.characteristic;
+				applied = true;
+			}
+		}
+		
+		if (applied) {
+			console.log('Применены последние значения формы');
+			// Дополнительно: после заполнения формы можно автоматически рассчитать сумму
+			this.autoCalculate();
+		}
+		
+		return applied;
+	}
+
+	/**
+	 * Очистить последние значения формы (для кнопки сброса)
+	 */
+	clearLastFormValues() {
+		localStorage.removeItem('last_purchase_form');
+		console.log('Последние значения формы очищены');
+	}
 	
 }
 

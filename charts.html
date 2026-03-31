@@ -1,7 +1,7 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
-    <title>Графики - Трекер покупок</title>
+    <title>Графики</title>
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
@@ -21,9 +21,10 @@
 
 <body>
     <header>
-        <h1>📊 Графики покупок</h1>
+        
         <nav class="app-nav">
-            <button onclick="window.location.href='app.html'" class="btn-secondary">← К таблице</button>
+			<h3>📈 Графики покупок</h3>
+            <button onclick="window.location.href='app.html'" class="btn-primary">← К таблице</button>
             <button onclick="window.location.href='stats.html'" class="btn-secondary">📈 Статистика</button>
             <button onclick="window.location.href='admin.html'" class="btn-secondary">⚙️ Админ-панель</button>
         </nav>
@@ -31,7 +32,7 @@
     
     <!-- Фильтры для графиков -->
     <div class="filters-panel">
-		<h3>Фильтры для графиков:</h3>
+		<h3>⚗️ Фильтры для графиков:</h3>
         <div class="filter-group">
 			<label>Период:</label>
             <select id="period-filter">
@@ -69,6 +70,27 @@
         <button id="apply-filters" class="btn-primary">Применить</button>
         <button id="reset-filters" class="btn-secondary">Сбросить</button>
     </div>
+	
+	<!-- Дашборд селекторов типов графиков -->
+	<div class="dashboard">
+		<div class="chart-view-selector">
+			<div class="view-types">
+				<h3>📊 Тип отображения:</h3>
+				<button class="view-type-btn active" data-view="horizontalBar" title="Горизонтальные гистограммы">
+					🧣 Горизонтальные
+				</button>
+				<button class="view-type-btn" data-view="bar" title="Вертикальные гистограммы">
+					📊Вертикальные
+				</button>
+				<button class="view-type-btn" data-view="pie" title="Круговые диаграммы"> <!-- class="view-type-btn" -->
+					🟢 Круговые
+				</button>
+				<button class="view-type-btn" data-view="doughnut" title="Кольцевые диаграммы">
+					⭕ Кольцевые
+				</button>
+			</div>
+		</div>
+	</div>
 	
 	<!-- Выбор периодов для сравнения -->
 	<div class="comparison-controls" id="comparison-controls" style="display: none;">
@@ -128,15 +150,15 @@
 		<div class="comparison-stats"></div>
 	</div>
     
-    <!-- Дашборд графиков -->
+    <!-- ДАШБОРД графиков -->
     <div class="dashboard">
-		<!-- Селектор типа графика -->
+		<!-- Селектор типа анализа -->
 		<div class="chart-type-selector">
-			<h3>Выберите тип анализа:</h3>
+			<h3>🅰️ Тип анализа:</h3>
 			<div class="chart-types">
-				<button class="chart-type-btn active" data-type="categories">📊 По категориям</button>
-				<button class="chart-type-btn" data-type="months">📅 По месяцам</button>
-				<button class="chart-type-btn" data-type="years">📈 По годам</button>
+				<button class="chart-type-btn active" data-type="categories">🎲 По категориям</button>
+				<button class="chart-type-btn" data-type="months">🗓️ По месяцам</button>
+				<button class="chart-type-btn" data-type="years">📅 По годам</button>
 				<button class="chart-type-btn" data-type="stores">🏪 По магазинам</button>
 				<button class="chart-type-btn" data-type="products">🛒 По товарам</button>
 				<!-- Кнопка периодов сравнения -->
@@ -241,47 +263,7 @@
 			<div class="combo-stats"></div>
 		</div>
 		
-		<!-- Селектор типа графиков -->
-		<div class="chart-view-selector">
-			<h3>Тип отображения:</h3>
-			<div class="view-types">
-				<button class="view-type-btn active" data-view="horizontalBar" title="Горизонтальные гистограммы">
-					📊 Горизонтальные
-				</button>
-				<button class="view-type-btn" data-view="bar" title="Вертикальные гистограммы">
-					📈 Вертикальные
-				</button>
-				<button class="view-type-btn" data-view="pie" title="Круговые диаграммы">
-					🥧 Круговые
-				</button>
-				<button class="view-type-btn" data-view="doughnut" title="Кольцевые диаграммы">
-					🍩 Кольцевые
-				</button>
-			</div>
-		</div>
-		
-		<!-- Кнопки экспорта графиков -->
-		<div class="chart-view-selector">
-			<h3>Экспорт графиков в формате PNG:</h3>
-			<div class="export-controls">
-				<button id="export-left" class="btn-export" title="Экспорт левого графика">
-					⏪ Левый
-				</button>
-				<button id="export-right" class="btn-export" title="Экспорт правого графика">
-					⏩ Правый
-				</button>
-				<button id="export-both" class="btn-export" title="Экспорт обоих графиков"> <!-- btn-primary -->
-					⏪ ⏩ Два графика
-				</button>
-				<button id="export-all" class="btn-export" title="Экспорт всех графиков как коллаж"> <!-- btn-secondary -->
-					🗺️ Коллаж
-				</button>
-				<button id="reset-settings" class="btn-export" title="Сбросить настройки"> <!-- btn-secondary -->
-					🔄 Сбросить настройки графиков
-				</button>
-			</div>
-		</div>
-		
+
 		<!-- Переключатель подписей/процентов -->
 		<div class="chart-options">
 			<label class="checkbox-label">
@@ -294,7 +276,7 @@
 			</label>
 		</div>
 		
-		<!-- Пара графиков -->
+		<!-- ПАРА ГРАФИКОВ -->
 		<div class="charts-pair">
 			<div class="chart-container">
 				<h3 id="left-chart-title">Распределение расходов</h3>
@@ -304,6 +286,30 @@
 			<div class="chart-container">
 				<h3 id="right-chart-title">Количество покупок</h3>
 				<canvas id="right-chart"></canvas>
+			</div>
+		</div>
+		
+		<!-- Кнопки экспорта графиков -->
+		<div class="dashboard">
+			<div class="chart-view-selector">
+				<div class="view-types">
+					<h3>🔊 Экспорт графиков в формате PNG:</h3>
+					<button id="export-left" class="btn-export" title="Экспорт левого графика">
+						⏪ Левый
+					</button>
+					<button id="export-right" class="btn-export" title="Экспорт правого графика">
+						⏩ Правый
+					</button>
+					<button id="export-both" class="btn-export" title="Экспорт обоих графиков"> <!-- btn-primary -->
+						⏪ ⏩ Два графика
+					</button>
+					<button id="export-all" class="btn-export" title="Экспорт всех графиков как коллаж"> <!-- btn-secondary -->
+						🗺️ Коллаж
+					</button>
+					<button id="reset-settings" class="btn-export" title="Сбросить настройки"> <!-- btn-secondary -->
+						🔄 Сбросить настройки графиков
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>

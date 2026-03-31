@@ -1,7 +1,7 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
-  <title>Мои Покупки</title>
+  <title>Таблица</title>
   <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet"><!--  -->
   <link href="css/styles.css" rel="stylesheet"> <!-- -->
   <meta charset="UTF-8">
@@ -9,7 +9,7 @@
 </head>
 <body>
 	<header>
-		<h1>Мои Покупки</h1>
+		<!-- <h1>Мои Покупки</h1> -->
 		<!-- Навигация app.html -->
 		<nav class="app-nav">
 			<button id="add-purchase-btn" class="btn-primary">+ Новая покупка</button>
@@ -19,65 +19,66 @@
 			<!-- Кнопка специального анализа цен -->
 			<button onclick="window.location.href='price-analysis.html'" class="btn-secondary">💰 Анализ цен</button>
 			<button onclick="window.location.href='admin.html'" class="btn-secondary">⚙️ Админ-панель</button>
-			<button id="logout-btn" class="btn-secondary">Выйти</button>
-		</nav>
-		
-		<!-- Панель экспорта отфильтрованных данных: -->
-		<div class="export-panel">
-			<div class="export-dropdown">
-				<button class="btn-export-dropdown" id="export-button">
-					📥 Экспорт данных
-					<span class="caret">▼</span>
-				</button>
-				<div class="export-menu" id="export-menu" style="display: none;">
-					<div class="export-menu-header">
-						<strong>Формат экспорта</strong>
-					</div>
-					<button class="export-option" data-format="csv">
-						📊 CSV (Excel)
-						<small>Совместимость с Excel</small>
+			
+			<!-- Панель экспорта отфильтрованных данных: -->
+			<div class="export-panel">
+				<div class="export-dropdown">
+					<button class="btn-export-dropdown" id="export-button">
+						📥 Экспорт данных
+						<span class="caret">▼</span>
 					</button>
-					<button class="export-option" data-format="xls">
-						📈 XLS (Excel)
-						<small>Формат Excel</small>
-					</button>
-					<button class="export-option" data-format="json">
-						📋 JSON
-						<small>Для программистов</small>
-					</button>
-					<button class="export-option" data-format="sql">
-						🗄️ SQL
-						<small>Бэкап базы данных</small>
-					</button>
-					
-					<div class="export-menu-header">
-						<strong>Настройки</strong>
-					</div>
-					
-					<div class="export-settings">
-						<label class="export-checkbox">
-							<input type="checkbox" id="export-headers" checked>
-							Включить заголовки
-						</label>
+					<div class="export-menu" id="export-menu" style="display: none;">
+						<div class="export-menu-header">
+							<strong>Формат экспорта</strong>
+						</div>
+						<button class="export-option" data-format="csv">
+							📊 CSV (Excel)
+							<small>Совместимость с Excel</small>
+						</button>
+						<button class="export-option" data-format="xls">
+							📈 XLS (Excel)
+							<small>Формат Excel</small>
+						</button>
+						<button class="export-option" data-format="json">
+							📋 JSON
+							<small>Для программистов</small>
+						</button>
+						<button class="export-option" data-format="sql">
+							🗄️ SQL
+							<small>Бэкап базы данных</small>
+						</button>
 						
-						<label class="export-checkbox">
-							<input type="checkbox" id="export-filters" checked>
-						Только отфильтрованные
-						</label>
+						<div class="export-menu-header">
+							<strong>Настройки</strong>
+						</div>
 						
-						<label class="export-checkbox" id="truncate-option" style="display: none;">
-							<input type="checkbox" id="export-truncate">
-							Очистить таблицу перед вставкой
-						</label>
-					</div>
-					
-					<div class="export-actions">
-						<button class="btn-primary" id="start-export">Экспортировать</button>
-						<button class="btn-secondary" id="close-export-menu">Отмена</button>
+						<div class="export-settings">
+							<label class="export-checkbox">
+								<input type="checkbox" id="export-headers" checked>
+								Включить заголовки
+							</label>
+							
+							<label class="export-checkbox">
+								<input type="checkbox" id="export-filters" checked>
+							Только отфильтрованные
+							</label>
+							
+							<label class="export-checkbox" id="truncate-option" style="display: none;">
+								<input type="checkbox" id="export-truncate">
+								Очистить таблицу перед вставкой
+							</label>
+						</div>
+						
+						<div class="export-actions">
+							<button class="btn-primary" id="start-export">Экспортировать</button>
+							<button class="btn-secondary" id="close-export-menu">Отмена</button>
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
+			
+			<button id="logout-btn" class="btn-secondary">Выйти</button>
+		</nav>
 		
 		<!-- Основные фильтры: -->
 		<div class="filters-panel">
@@ -106,17 +107,12 @@
 					<option value="">Все магазины</option>
 				</select>
 			</div>
-			<div>
-				<button id="apply-filters" class="btn-secondary">Применить</button>
-				<button id="reset-filters" class="btn-secondary">Сбросить</button>
-				<!-- <button id="clear-all-filters" class="btn-secondary" title="Очистить все фильтры">🗑️ Сбросить интерактивность</button> -->
-			</div>
 		</div>
 		
-		<!-- После панели фильтров -->
+		<!-- После панели фильтров - background: #e3f2fd -->
 		<div id="active-filters-info" style="
 			display: none;
-			background: red; <!-- #e3f2fd -->
+			background: red;
 			padding: 8px 12px;
 			margin: 10px 0;
 			border-radius: 4px;
@@ -135,6 +131,10 @@
 				<div id="active-filters-info" class="active-filters"></div>
 			</div>
 			<div class="info-right">
+				<div>
+					<button id="apply-filters" class="btn-secondary">Применить фильтры</button>
+					<button id="reset-filters" class="btn-secondary">Сбросить</button>
+				</div>
 				<div class="info-item">
 					<span class="info-label">Покупок:</span>
 					<span class="info-value" id="total-rows">0</span>
@@ -149,6 +149,7 @@
 				</div>
 			</div>
 		</div>
+		
 		
 		<!-- Основная таблица покупок - заполняется динамически -->
 		<div id="purchases-table"></div>
@@ -225,7 +226,7 @@
 				
                 <div class="form-group">
                     <label>Название товара</label>
-                    <input type="text" id="purchase-name" required placeholder="Например: Молоко">
+                    <input type="text" id="purchase-name" required placeholder="Например: Саморезы">
                 </div>
 				
 				<!-- Вторая строка -->
@@ -233,7 +234,15 @@
                     <label>Характеристики товара</label>
                     <textarea id="purchase-characteristics" placeholder="Вес, объем, особенности товара..." rows="2"></textarea>
                 </div>
-
+				
+                <div class="form-group full-width">
+					<label>🔑 Ключевые слова для поиска</label>
+					<input type="text" id="purchase-keywords" 
+						   placeholder="Введите ключевые слова через пробел (например: сливочное 72.5% тарнога)"
+						   class="keywords-input">
+					<small class="form-hint">Ключевые слова помогут группировать похожие товары при анализе цен</small>
+				</div>
+				
                 <!-- Третья строка - компактная для числовых полей -->
                 <div class="form-group">
                     <label>Цена за ед. (₽)</label>
@@ -262,7 +271,13 @@
             
             <div class="form-actions">
                 <button type="submit" class="btn-primary">💾 Сохранить покупку</button>
-                <button type="button" id="cancel-purchase" class="btn-secondary">Отмена</button>
+                <button type="button" id="copy-last" class="btn-secondary" title="Скопировать данные из последней покупки">
+					📋 Копировать из последней
+				</button>
+				<button type="button" id="clear-last" class="btn-secondary" title="Очистить сохранённые значения">
+					🗑️ Очистить шаблон
+				</button>
+				<button type="button" id="cancel-purchase" class="btn-secondary">Отмена</button>
             </div>
         </form>
     </div>

@@ -186,23 +186,30 @@ class AdminPanel {
                     <th>Город</th>
                     <th>Адрес</th>
                     <th>Телефон</th>
+					<th>Дата добавления</th>
                     <th>Действия</th>
                 </tr>
             </thead>
             <tbody>
-                ${shops.map(shop => `
-                    <tr>
-                        <td>${shop.id}</td>
-                        <td>${shop.shop}</td>
-                        <td>${shop.city_name || 'Не указан'}</td>
-                        <td>${shop.street}, д. ${shop.house}</td>
-                        <td>${shop.phone || '-'}</td>
-                        <td class="actions">
-                            <button class="edit-btn" onclick="adminPanel.editShop(${shop.id})" title="Редактировать">✏️</button>
-                            <button class="delete-btn" onclick="adminPanel.deleteShop(${shop.id})" title="Удалить">🗑️</button>
-                        </td>
-                    </tr>
-                `).join('')}
+                ${shops.map(shop => {
+					// Форматируем дату для отображения
+					const dateStr = shop.date_store ? new Date(shop.date_store).toLocaleDateString('ru-RU') : '-';
+                
+					return `
+						<tr>
+							<td>${shop.id}</td>
+							<td>${shop.shop}</td>
+							<td>${shop.city_name || 'Не указан'}</td>
+							<td>${shop.street}, д. ${shop.house}</td>
+							<td>${shop.phone || '-'}</td>
+							<td>${dateStr}</td>
+							<td class="actions">
+								<button class="edit-btn" onclick="adminPanel.editShop(${shop.id})" title="Редактировать">✏️</button>
+								<button class="delete-btn" onclick="adminPanel.deleteShop(${shop.id})" title="Удалить">🗑️</button>
+							</td>
+						</tr>
+					`;
+                }).join('')}
             </tbody>
         `;
         
@@ -239,6 +246,19 @@ class AdminPanel {
 		document.getElementById('shop-street').value = shop ? shop.street : '';
 		document.getElementById('shop-house').value = shop ? shop.house : '';
 		document.getElementById('shop-phone').value = shop ? shop.phone || '' : '';
+		
+		// ДОБАВЛЯЕМ: заполнение поля даты
+		const dateField = document.getElementById('shop-date');
+		if (dateField) {
+			if (shop && shop.date_store) {
+				// Если редактирование и дата есть - подставляем её
+				dateField.value = shop.date_store;
+			} else {
+				// Если добавление нового - устанавливаем сегодняшнюю дату
+				const today = new Date().toISOString().split('T')[0];
+				dateField.value = today;
+			}
+		}
 		
 		// Заполняем выпадающий список городов
 		const citySelect = document.getElementById('shop-city');
@@ -292,7 +312,9 @@ class AdminPanel {
 				locality_id: parseInt(document.getElementById('shop-city').value),
 				street: document.getElementById('shop-street').value.trim(),
 				house: document.getElementById('shop-house').value.trim(),
-				phone: document.getElementById('shop-phone').value.trim()
+				phone: document.getElementById('shop-phone').value.trim(),
+				// ДОБАВЛЯЕМ поле даты
+				date_store: document.getElementById('shop-date').value
 			};
 			
 			// Валидация
@@ -354,6 +376,11 @@ class AdminPanel {
 				this.showNotification(shopId ? 'Магазин обновлён!' : 'Магазин добавлен!', 'success');
 				document.getElementById('shop-modal').style.display = 'none';
 				await this.loadShopsData();
+				
+				// Обновляем глобальные данные для экспорта
+				const shopsResponse = await apiClient.request('stores', 'GET');
+				window.shopsData = shopsResponse.data || [];
+				
 			} else {
 				throw new Error(result?.error || 'Ошибка сохранения');
 			}

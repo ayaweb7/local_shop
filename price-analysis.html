@@ -44,7 +44,7 @@
         
         <!-- Панель выбора товара -->
         <div class="selection-panel">
-            <h3 style="margin-top: 0; margin-bottom: 20px;">🔍 Выберите товар для анализа</h3>
+            <h3 style="margin-top: 0; margin-bottom: 20px;">🔍 Настройка анализа цен</h3>
             
             <div class="selection-grid">
                 <div class="form-group">
@@ -67,6 +67,17 @@
                         <option value="">-- Все характеристики --</option>
                     </select>
                 </div>
+				
+				<!-- НОВЫЙ БЛОК: Режим поиска -->
+				<div class="form-group">
+					<label>Режим поиска:</label>
+					<select id="search-mode">
+						<option value="exact">Точное совпадение</option>
+						<option value="keywords">По ключевым словам</option>
+						<option value="normalized">Нормализованный поиск</option>
+					</select>
+					<small class="form-hint">Для неструктурированных данных выбирайте "По ключевым словам"</small>
+				</div>
             </div>
             
             <!-- Период анализа -->
@@ -95,7 +106,7 @@
                 <button id="analyze-btn" class="btn-primary btn-large" disabled>
                     📊 Анализировать
                 </button>
-                <button id="reset-btn" class="btn-secondary btn-large">
+                <button id="reset-btn" class="btn-secondary">
                     🔄 Сбросить
                 </button>
             </div>
@@ -137,7 +148,7 @@
             </div>
             
             <!-- Пузырьковая диаграмма (дополнительная) -->
-            <div class="chart-container">
+            <div class="chart-container  bubble-chart-container">
                 <h3>🎯 Анализ по магазинам (размер = количество)</h3>
                 <div class="chart-wrapper">
                     <canvas id="bubble-chart"></canvas>
@@ -333,7 +344,7 @@
         function setDefaultDates() {
             const today = new Date();
             const yearAgo = new Date();
-            yearAgo.setFullYear(today.getFullYear() - 1);
+            yearAgo.setFullYear(today.getFullYear() - 6); // за 6 лет
             
             const dateFrom = document.getElementById('date-from');
             const dateTo = document.getElementById('date-to');

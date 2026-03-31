@@ -136,9 +136,10 @@ function handlePurchases($db) {
         $item = $db->real_escape_string($input['item']);
         $characteristic = isset($input['characteristic']) ? $db->real_escape_string($input['characteristic']) : '';
         $amount = floatval($input['amount'] ?? ($price * $quantity)); // Расчет, если не передано
-
-        $sql = "INSERT INTO shops (date, store_id, name, category_id, characteristic, quantity, item, price, amount) 
-                VALUES ('$date', $store_id, '$name', $category_id, '$characteristic', $quantity, '$item', $price, $amount)";
+		$search_keywords = isset($input['search_keywords']) ? $db->real_escape_string($input['search_keywords']) : '';
+		
+        $sql = "INSERT INTO shops (date, store_id, name, category_id, characteristic, quantity, item, price, amount, search_keywords) 
+                VALUES ('$date', $store_id, '$name', $category_id, '$characteristic', $quantity, '$item', $price, $amount, '$search_keywords')";
 
         if ($db->query($sql)) {
             $new_id = $db->insert_id;
@@ -170,6 +171,7 @@ function handlePurchases($db) {
         $item = $db->real_escape_string($input['item']);
         $characteristic = $db->real_escape_string($input['characteristic'] ?? '');
         $amount = floatval($input['amount']);
+		$search_keywords = $db->real_escape_string($input['search_keywords']);
 
         $sql = "UPDATE shops SET 
                 date = '$date',
@@ -177,6 +179,7 @@ function handlePurchases($db) {
                 name = '$name',
                 category_id = $category_id,
                 characteristic = '$characteristic',
+				search_keywords = '$search_keywords',
                 quantity = $quantity,
                 item = '$item',
                 price = $price,
@@ -262,6 +265,11 @@ function handleStores($db) {
         $street = $db->real_escape_string($input['street']);
         $house = $db->real_escape_string($input['house']);
         $phone = $db->real_escape_string($input['phone'] ?? '');
+		
+		// ДОБАВЛЯЕМ обработку поля date_store
+        $date_store = isset($input['date_store']) && !empty($input['date_store']) 
+            ? $db->real_escape_string($input['date_store']) 
+            : date('Y-m-d'); // Если не передано, используем текущую дату
 
         if (isset($input['id']) && !empty($input['id'])) {
             // Редактирование
@@ -271,7 +279,8 @@ function handleStores($db) {
                     locality_id = $locality_id,
                     street = '$street',
                     house = '$house',
-                    phone = '$phone'
+                    phone = '$phone',
+                    date_store = '$date_store'
                     WHERE id = $id";
 
             if ($db->query($sql)) {
@@ -282,8 +291,8 @@ function handleStores($db) {
             }
         } else {
             // Добавление
-            $sql = "INSERT INTO stores (shop, locality_id, street, house, phone) 
-                    VALUES ('$shop', $locality_id, '$street', '$house', '$phone')";
+            $sql = "INSERT INTO stores (shop, locality_id, street, house, phone, date_store) 
+                    VALUES ('$shop', $locality_id, '$street', '$house', '$phone', '$date_store')";
 
             if ($db->query($sql)) {
                 $new_id = $db->insert_id;
@@ -533,14 +542,15 @@ function formatAddress($row) {
  *   - date_to (string, optional) - дата окончания
  */
 function getProductPrices($db) {
-    try {
-        // Получаем параметры
-        $categoryId = isset($_GET['category_id']) ? intval($_GET['category_id']) : 0;
-        $productName = isset($_GET['product_name']) ? $db->real_escape_string($_GET['product_name']) : '';
-        $characteristic = isset($_GET['characteristic']) ? $db->real_escape_string($_GET['characteristic']) : null;
-        $dateFrom = isset($_GET['date_from']) ? $db->real_escape_string($_GET['date_from']) : null;
-        $dateTo = isset($_GET['date_to']) ? $db->real_escape_string($_GET['date_to']) : null;
-        
+        try {
+			// Получаем параметры
+			$categoryId = isset($_GET['category_id']) ? intval($_GET['category_id']) : 0;
+			$productName = isset($_GET['product_name']) ? $db->real_escape_string($_GET['product_name']) : '';
+			$characteristic = isset($_GET['characteristic']) ? $db->real_escape_string($_GET['characteristic']) : null;
+			$searchMode = isset($_GET['search_mode']) ? $_GET['search_mode'] : 'exact'; // exact, keywords, normalized
+			$dateFrom = isset($_GET['date_from']) ? $db->real_escape_string($_GET['date_from']) : null;
+			$dateTo = isset($_GET['date_to']) ? $db->real_escape_string($_GET['date_to']) : null;
+		
         // Валидация
         if (!$categoryId || !$productName) {
             http_response_code(400);
@@ -548,13 +558,14 @@ function getProductPrices($db) {
             return;
         }
         
-        // --- 1. ПОЛУЧАЕМ ПОКУПКИ ---
+        // --- 1. ПОЛУЧАЕМ ПОКУПКИ - Базовый запрос ---
         $sql = "
             SELECT 
                 s.id,
                 s.date,
                 s.name,
                 s.characteristic,
+                s.normalized_characteristic,
                 s.quantity,
                 s.item,
                 s.price,
@@ -573,7 +584,31 @@ function getProductPrices($db) {
         
         // Добавляем фильтры
         if ($characteristic && $characteristic !== '') {
-            $sql .= " AND s.characteristic LIKE '%$characteristic%'";
+            switch ($searchMode) {
+                case 'keywords':
+                    // Поиск по ключевым словам
+                    $keywords = explode(' ', extractKeywords($characteristic));
+                    $keywordConditions = [];
+                    foreach ($keywords as $keyword) {
+                        if (!empty(trim($keyword))) {
+                            $keywordConditions[] = "s.search_keywords LIKE '%" . $db->real_escape_string($keyword) . "%'";
+                        }
+                    }
+                    if (!empty($keywordConditions)) {
+                        $sql .= " AND (" . implode(' OR ', $keywordConditions) . ")";
+                    }
+                    break;
+                    
+                case 'normalized':
+                    // Поиск по нормализованной характеристике
+                    $normalized = normalizeCharacteristic($characteristic);
+                    $sql .= " AND s.normalized_characteristic LIKE '%$normalized%'";
+                    break;
+                    
+                default:
+                    // Точное совпадение (как было)
+                    $sql .= " AND s.characteristic LIKE '%$characteristic%'";
+            }
         }
         
         if ($dateFrom) {
@@ -799,21 +834,73 @@ function normalizePriceMysqli($price, $quantity, $unit) {
     switch ($unit) {
         case 'г':
             $result['price_per_unit'] = ($price * 1000) / $quantity;
-            $result['normalized_unit'] = 'кг';
+            $result['normalized_unit'] = 'кг.';
             $result['normalized'] = true;
             break;
         case 'мл':
             $result['price_per_unit'] = ($price * 1000) / $quantity;
-            $result['normalized_unit'] = 'л';
+            $result['normalized_unit'] = 'л.';
             $result['normalized'] = true;
             break;
         case 'см':
             $result['price_per_unit'] = ($price * 100) / $quantity;
-            $result['normalized_unit'] = 'м';
+            $result['normalized_unit'] = 'м.';
             $result['normalized'] = true;
             break;
     }
     
     return $result;
+}
+
+/**
+ * Нормализация характеристик для поиска
+ * Приводит к единому формату числовые значения и выделяет ключевые слова
+ */
+function normalizeCharacteristic($characteristic) {
+    if (empty($characteristic)) return '';
+    
+    $normalized = $characteristic;
+    
+    // Замена разных разделителей на единый формат
+    $normalized = preg_replace('/[хx\*]/', 'x', $normalized); // 3,5х41 → 3,5x41
+    $normalized = preg_replace('/[;,]/', ',', $normalized);   // разные разделители к запятой
+    
+    // Нормализация пробелов
+    $normalized = preg_replace('/\s+/', ' ', $normalized);
+    
+    // Приведение к нижнему регистру для поиска
+    $normalized = mb_strtolower($normalized, 'UTF-8');
+    
+    return trim($normalized);
+}
+
+/**
+ * Извлечение ключевых слов для поиска
+ */
+function extractKeywords($characteristic) {
+    if (empty($characteristic)) return '';
+    
+    $keywords = [];
+    
+    // Числовые паттерны (размеры, вес)
+    preg_match_all('/(\d+[.,]?\d*)\s*[хx]?\s*(\d+[.,]?\d*)?/u', $characteristic, $matches);
+    if (!empty($matches[0])) {
+        $keywords = array_merge($keywords, $matches[0]);
+    }
+    
+    // Ключевые слова (сливочное, крестьянское, оксидированный и т.д.)
+    $wordPatterns = [
+        'сливочное', 'моторное', 'бутербродное', 'кровельные',
+        'жёлтые', 'черные', 'с прессшайбой', 'оцинкованные',
+        'для кошек', 'для собак', '72,5%'
+    ];
+    
+    foreach ($wordPatterns as $pattern) {
+        if (mb_stripos($characteristic, $pattern) !== false) {
+            $keywords[] = $pattern;
+        }
+    }
+    
+    return implode(' ', array_unique($keywords));
 }
 ?>
