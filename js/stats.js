@@ -327,13 +327,13 @@ class StatisticsManager {
      * Отображение всей статистики
      */
     displayAll() {
-        console.log('Отображение всей статистики...');
-        
-        this.displayCategoriesStats();
-        this.displayStoresStats();
-        this.displayMonthlyStats();
-        this.displaySummaryStats();
-    }
+		console.log('Отображение всей статистики...');
+		
+		this.displayCategoriesStats();  // Оставляем как есть (HTML)
+		this.displayStoresStats();      // Теперь Tabulator
+		this.displayMonthlyStats();     // Теперь Tabulator
+		this.displaySummaryStats();     // Оставляем как есть
+	}
 
     /**
      * Отображение статистики по категориям
@@ -352,9 +352,9 @@ class StatisticsManager {
         
         let html = `
             <div class="stats-header">
-                <h3>📊 Статистика по категориям</h3>
+                <!--<h3>📊 Статистика по категориям</h3>-->
                 <div class="stats-summary">
-                    <span>${stats.length} категорий</span>
+                    <span>${stats.length} категорий = </span>
                     <span>${summary?.totalAmount?.toFixed(2) || '0'} ₽</span>
                 </div>
             </div>
@@ -391,101 +391,219 @@ class StatisticsManager {
     }
 
     /**
-     * Отображение статистики по магазинам
-     */
-    displayStoresStats() {
-        const container = this.containers.stores;
-        if (!container || !this.stats.stores) return;
-        
-        const stats = this.stats.stores;
-        
-        if (stats.length === 0) {
-            container.innerHTML = '<div class="no-data">Нет данных по магазинам</div>';
-            return;
-        }
-        
-        let html = `
-            <div class="stats-header">
-                <h3>🏪 Статистика по магазинам</h3>
-                <div class="stats-summary">
-                    <span>${stats.length} магазинов</span>
-                </div>
-            </div>
-            <div class="stats-table">
-                <div class="stats-row header">
-                    <div class="stats-cell">Магазин</div>
-                    <div class="stats-cell">Адрес</div>
-                    <div class="stats-cell">Сумма</div>
-                    <div class="stats-cell">Кол-во</div>
-                    <div class="stats-cell">Средний чек</div>
-                    <div class="stats-cell">Посещений</div>
-                </div>
-        `;
-        
-        stats.forEach((stat, index) => {
-            html += `
-                <div class="stats-row ${index % 2 === 0 ? 'even' : 'odd'}">
-                    <div class="stats-cell">${stat.name}</div>
-                    <div class="stats-cell">${stat.address}</div>
-                    <div class="stats-cell">${stat.amount.toFixed(2)} ₽</div>
-                    <div class="stats-cell">${stat.count} шт.</div>
-                    <div class="stats-cell">${stat.avgReceipt.toFixed(2)} ₽</div>
-                    <div class="stats-cell">${stat.visitsCount} раз</div>
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-        container.innerHTML = html;
-    }
+	 * Отображение статистики по магазинам с Tabulator
+	 */
+	displayStoresStats() {
+		const container = this.containers.stores;
+		if (!container || !this.stats.stores) return;
+		
+		const stats = this.stats.stores;
+		
+		if (stats.length === 0) {
+			container.innerHTML = '<div class="no-data">Нет данных по магазинам</div>';
+			return;
+		}
+		
+		// Очищаем контейнер
+		container.innerHTML = '';
+		
+		// Уничтожаем старую таблицу, если она существует
+		if (this.storesTable) {
+			this.storesTable.destroy();
+		}
+		
+		// Создаём новую таблицу Tabulator
+		this.storesTable = new Tabulator(container, {
+			data: stats,
+			layout: 'fitColumns',
+			pagination: 'local',
+			paginationSize: 10,
+			paginationSizeSelector: [5, 10, 20, 50],
+			height: 'auto',
+			
+			columns: [
+				{ 
+					title: 'Магазин',
+					field: 'name',
+					width: 270, // 200
+					sorter: 'string',
+					headerFilter: 'input',
+					headerFilterPlaceholder: 'Поиск...'
+				},
+				{ 
+					title: 'Адрес магазина',
+					field: 'address',
+					width: 298, // 250
+					sorter: 'string',
+					headerFilter: 'input',
+					headerFilterPlaceholder: 'Поиск...'
+				},
+				{ 
+					title: 'Сумма',
+					field: 'amount',
+					width: 200, // 120
+					sorter: 'number',
+					hozAlign: 'right',
+					formatter: (cell) => {
+						const value = cell.getValue();
+						return value ? value.toFixed(2) + ' ₽' : '0.00 ₽';
+					}
+				},
+				{ 
+					title: 'Средний чек',
+					field: 'avgReceipt',
+					width: 200, // 120
+					sorter: 'number',
+					hozAlign: 'right',
+					formatter: (cell) => {
+						const value = cell.getValue();
+						return value ? value.toFixed(2) + ' ₽' : '0.00 ₽';
+					}
+				},
+				{ 
+					title: 'Покупок',
+					field: 'count',
+					width: 150, // 80
+					sorter: 'number',
+					hozAlign: 'right'
+				},
+				{ 
+					title: 'Посещений',
+					field: 'visitsCount',
+					width: 150, // 100
+					sorter: 'number',
+					hozAlign: 'right'
+				}
+			],
+			locale: true,
+			langs: {
+				'ru-ru': {
+					'pagination': {
+						'page_size': 'Записей на странице',
+						'first': 'Первая',
+						'first_title': 'Первая страница',
+						'last': 'Последняя',
+						'last_title': 'Последняя страница',
+						'prev': 'Предыдущая',
+						'prev_title': 'Предыдущая страница',
+						'next': 'Следующая',
+						'next_title': 'Следующая страница',
+						'all': 'Все'
+					}
+				}
+			}
+		});
+		
+		console.log('Таблица магазинов Tabulator инициализирована');
+	}
 
     /**
-     * Отображение месячной статистики
-     */
-    displayMonthlyStats() {
-        const container = this.containers.monthly;
-        if (!container || !this.stats.monthly) return;
-        
-        const stats = this.stats.monthly;
-        
-        if (stats.length === 0) {
-            container.innerHTML = '<div class="no-data">Нет данных по месяцам</div>';
-            return;
-        }
-        
-        let html = `
-            <div class="stats-header">
-                <h3>📅 Месячная статистика</h3>
-            </div>
-            <div class="stats-table">
-                <div class="stats-row header">
-                    <div class="stats-cell">Месяц</div>
-                    <div class="stats-cell">Сумма</div>
-                    <div class="stats-cell">Кол-во</div>
-                    <div class="stats-cell">Категорий</div>
-                    <div class="stats-cell">Магазинов</div>
-                    <div class="stats-cell">Средний чек</div>
-                </div>
-        `;
-        
-        stats.forEach((stat, index) => {
-            const avgReceipt = stat.count > 0 ? stat.amount / stat.count : 0;
-            
-            html += `
-                <div class="stats-row ${index % 2 === 0 ? 'even' : 'odd'}">
-                    <div class="stats-cell">${stat.name}</div>
-                    <div class="stats-cell">${stat.amount.toFixed(2)} ₽</div>
-                    <div class="stats-cell">${stat.count} шт.</div>
-                    <div class="stats-cell">${stat.categoriesCount}</div>
-                    <div class="stats-cell">${stat.storesCount}</div>
-                    <div class="stats-cell">${avgReceipt.toFixed(2)} ₽</div>
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-        container.innerHTML = html;
-    }
+	 * Отображение месячной статистики с Tabulator
+	 */
+	displayMonthlyStats() {
+		const container = this.containers.monthly;
+		if (!container || !this.stats.monthly) return;
+		
+		const stats = this.stats.monthly;
+		
+		if (stats.length === 0) {
+			container.innerHTML = '<div class="no-data">Нет данных по месяцам</div>';
+			return;
+		}
+		
+		// Очищаем контейнер
+		container.innerHTML = '';
+		
+		// Уничтожаем старую таблицу, если она существует
+		if (this.monthlyTable) {
+			this.monthlyTable.destroy();
+		}
+		
+		// Создаём новую таблицу Tabulator
+		this.monthlyTable = new Tabulator(container, {
+			data: stats,
+			layout: 'fitColumns',
+			pagination: 'local',
+			paginationSize: 12,
+			paginationSizeSelector: [6, 12, 24, 48],
+			height: 'auto',
+			
+			columns: [
+				{ 
+					title: 'Месяц и Год',
+					field: 'name',
+					width: 317, // 150
+					sorter: 'string',
+					headerFilter: 'input',
+					headerFilterPlaceholder: 'Поиск...'
+				},
+				{ 
+					title: 'Сумма',
+					field: 'amount',
+					width: 250, // 120
+					sorter: 'number',
+					hozAlign: 'right',
+					formatter: (cell) => {
+						const value = cell.getValue();
+						return value ? value.toFixed(2) + ' ₽' : '0.00 ₽';
+					}
+				},
+				{ 
+					title: 'Средний чек',
+					field: 'avgReceipt',
+					width: 250, // 120
+					sorter: 'number',
+					hozAlign: 'right',
+					formatter: (cell) => {
+						const row = cell.getRow().getData();
+						const avg = row.amount / row.count;
+						return avg ? avg.toFixed(2) + ' ₽' : '0.00 ₽';
+					}
+				},
+				{ 
+					title: 'Покупок',
+					field: 'count',
+					width: 150, // 80
+					sorter: 'number',
+					hozAlign: 'right'
+				},
+				{ 
+					title: 'Категорий',
+					field: 'categoriesCount',
+					width: 150, // 100
+					sorter: 'number',
+					hozAlign: 'right'
+				},
+				{ 
+					title: 'Магазинов',
+					field: 'storesCount',
+					width: 150, // 100
+					sorter: 'number',
+					hozAlign: 'right'
+				}
+			],
+			
+			locale: true,
+			langs: {
+				'ru-ru': {
+					'pagination': {
+						'page_size': 'Записей на странице',
+						'first': 'Первая',
+						'first_title': 'Первая страница',
+						'last': 'Последняя',
+						'last_title': 'Последняя страница',
+						'prev': 'Предыдущая',
+						'prev_title': 'Предыдущая страница',
+						'next': 'Следующая',
+						'next_title': 'Следующая страница',
+						'all': 'Все'
+					}
+				}
+			}
+		});
+		
+		console.log('Таблица месячной статистики Tabulator инициализирована');
+	}
 
     /**
      * Отображение сводной статистики
@@ -547,50 +665,54 @@ class StatisticsManager {
      * Экспорт статистики в CSV
      */
     exportToCSV(type = 'categories') {
-        const stats = this.stats[type];
-        if (!stats || stats.length === 0) {
-            console.warn('Нет данных для экспорта');
-            return;
-        }
-        
-        let csv = '';
-        
-        switch (type) {
-            case 'categories':
-                csv = 'Категория,Сумма,Количество,Доля(%)\n';
-                stats.forEach(stat => {
-                    csv += `"${stat.name}",${stat.amount},${stat.count},${stat.percentage.toFixed(2)}\n`;
-                });
-                break;
-                
-            case 'stores':
-                csv = 'Магазин,Адрес,Сумма,Количество,Средний чек,Посещений\n';
-                stats.forEach(stat => {
-                    csv += `"${stat.name}","${stat.address}",${stat.amount},${stat.count},${stat.avgReceipt},${stat.visitsCount}\n`;
-                });
-                break;
-                
-            case 'monthly':
-                csv = 'Месяц,Сумма,Количество,Категорий,Магазинов\n';
-                stats.forEach(stat => {
-                    csv += `"${stat.name}",${stat.amount},${stat.count},${stat.categoriesCount},${stat.storesCount}\n`;
-                });
-                break;
-        }
-        
-        // Создаем Blob и скачиваем
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        
-        link.setAttribute('href', url);
-        link.setAttribute('download', `statistics_${type}_${new Date().toISOString().slice(0, 10)}.csv`);
-        link.style.visibility = 'hidden';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
+		let data = [];
+		let filename = `statistics_${type}_${new Date().toISOString().slice(0, 10)}`;
+		
+		switch (type) {
+			case 'categories':
+				data = this.stats.categories;
+				break;
+				
+			case 'stores':
+				// Если есть таблица Tabulator, берём данные из неё
+				if (this.storesTable) {
+					data = this.storesTable.getData();
+				} else {
+					data = this.stats.stores;
+				}
+				break;
+				
+			case 'monthly':
+				if (this.monthlyTable) {
+					data = this.monthlyTable.getData();
+				} else {
+					data = this.stats.monthly;
+				}
+				break;
+				
+			default:
+				data = this.stats[type] || [];
+		}
+		
+		if (!data || data.length === 0) {
+			console.warn('Нет данных для экспорта');
+			alert('Нет данных для экспорта');
+			return;
+		}
+		
+		// Используем глобальный dataExporter
+		if (window.dataExporter) {
+			window.dataExporter.export(data, {
+				format: 'csv',
+				filename: filename,
+				separator: ';',
+				headers: true
+			});
+		} else {
+			console.error('dataExporter не найден');
+			alert('Ошибка: модуль экспорта не загружен');
+		}
+	}
 }
 
 // Создаем глобальный экземпляр

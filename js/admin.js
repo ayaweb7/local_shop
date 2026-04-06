@@ -140,87 +140,251 @@ class AdminPanel {
             this.loadCitiesData();
         }
     }
+	
+	/**
+	 * Универсальный метод поиска элемента по ID
+	 * @param {string} endpoint - API эндпоинт ('cities', 'stores', 'categories')
+	 * @param {number|string} id - ID искомого элемента
+	 * @returns {Promise<Object>} Найденный элемент
+	 */
+	async findById(endpoint, id) {
+		const response = await apiClient.request(endpoint, 'GET');
+		const items = response.data || response;
+		const idToFind = typeof id === 'string' ? parseInt(id) : id;
+		
+		const item = items.find(item => {
+			const itemId = typeof item.id === 'string' ? parseInt(item.id) : item.id;
+			return itemId === idToFind;
+		});
+		
+		if (!item) {
+			throw new Error(`${endpoint} с ID ${id} не найден`);
+		}
+		
+		return item;
+	}
 
     // === МАГАЗИНЫ ===
 
     async loadShopsData() {
-        try {
-            console.log('Загрузка магазинов...');
-            
-            const response = await apiClient.request('stores', 'GET');
-            const shops = response.data || [];
-            
-            console.log('Загружено магазинов:', shops.length);
-            this.displayShopsTable(shops);
-            
-        } catch (error) {
-            console.error('Ошибка загрузки магазинов:', error);
-            this.showNotification('Ошибка загрузки магазинов: ' + error.message, 'error');
-        }
-    }
+		try {
+			console.log('Загрузка магазинов...');
+			
+			const response = await apiClient.request('stores', 'GET');
+			const shops = response.data || response || [];
+			
+			console.log('Загружено магазинов:', shops.length);
+			
+			// Если таблица уже существует, обновляем данные
+			if (this.shopsTable) {
+				this.shopsTable.setData(shops);
+			} else {
+				this.displayShopsTable(shops);
+			}
+			
+			// Обновляем глобальные данные для экспорта
+			window.shopsData = shops;
+			
+		} catch (error) {
+			console.error('Ошибка загрузки магазинов:', error);
+			this.showNotification('Ошибка загрузки магазинов: ' + error.message, 'error');
+		}
+	}
 
     displayShopsTable(shops) {
-		
 		// Сохраняем данные для экспорта
 		window.shopsData = shops;
-	
-        const container = document.getElementById('shops-table');
-        if (!container) return;
-        
-        // Очищаем контейнер
-        container.innerHTML = '';
-        
-        if (shops.length === 0) {
-            container.innerHTML = '<p class="empty-message">Нет магазинов. Добавьте первый магазин.</p>';
-            return;
-        }
-        
-        // Создаём таблицу
-        const table = document.createElement('table');
-        table.className = 'admin-table';
-        table.innerHTML = `
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Название</th>
-                    <th>Город</th>
-                    <th>Адрес</th>
-                    <th>Телефон</th>
-					<th>Дата добавления</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${shops.map(shop => {
-					// Форматируем дату для отображения
-					const dateStr = shop.date_store ? new Date(shop.date_store).toLocaleDateString('ru-RU') : '-';
-                
-					return `
-						<tr>
-							<td>${shop.id}</td>
-							<td>${shop.shop}</td>
-							<td>${shop.city_name || 'Не указан'}</td>
-							<td>${shop.street}, д. ${shop.house}</td>
-							<td>${shop.phone || '-'}</td>
-							<td>${dateStr}</td>
-							<td class="actions">
-								<button class="edit-btn" onclick="adminPanel.editShop(${shop.id})" title="Редактировать">✏️</button>
-								<button class="delete-btn" onclick="adminPanel.deleteShop(${shop.id})" title="Удалить">🗑️</button>
-							</td>
-						</tr>
-					`;
-                }).join('')}
-            </tbody>
-        `;
-        
-        container.appendChild(table);
-    }
+		
+		const container = document.getElementById('shops-table');
+		if (!container) return;
+		
+		// Очищаем контейнер
+		container.innerHTML = '';
+		
+		if (shops.length === 0) {
+			container.innerHTML = '<p class="empty-message">Нет магазинов. Добавьте первый магазин.</p>';
+			return;
+		}
+		
+		// Уничтожаем старую таблицу, если она существует
+		if (this.shopsTable) {
+			this.shopsTable.destroy();
+		}
+		
+		// Создаём новую таблицу Tabulator
+		this.shopsTable = new Tabulator('#shops-table', {
+			data: shops,
+			layout: 'fitColumns',
+			pagination: 'local',
+			paginationSize: 20,
+			paginationSizeSelector: [10, 20, 50, 100],
+			movableColumns: true,
+			height: 'auto',
+			
+			columns: [
+				{ 
+					title: 'ID', 
+					field: 'id', 
+					width: 70,
+					sorter: 'number',
+					headerFilter: 'input',
+					headerFilterPlaceholder: 'Фильтр...'
+				},
+				{ 
+					title: 'Название', 
+					field: 'shop', 
+					width: 250, // 200
+					sorter: 'string',
+					headerFilter: 'input',
+					headerFilterPlaceholder: 'Поиск...'
+				},
+				{ 
+					title: 'Город', 
+					field: 'city_name', 
+					width: 150,
+					sorter: 'string',
+					headerFilter: 'input',
+					headerFilterPlaceholder: 'Поиск...',
+					formatter: (cell) => {
+						const value = cell.getValue();
+						return value || '-';
+					}
+				},
+				{ 
+					title: 'Адрес', 
+					field: 'street', 
+					width: 270, // 250
+					sorter: 'string',
+					headerFilter: 'input',
+					headerFilterPlaceholder: 'Поиск...',
+					formatter: (cell) => {
+						const row = cell.getRow().getData();
+						return `${row.street || ''}, д. ${row.house || ''}`;
+					},
+					// Добавляем кастомную функцию фильтрации
+					headerFilterFunc: (headerValue, rowValue, rowData) => {
+						if (!headerValue) return true;
+						const searchTerm = headerValue.toLowerCase();
+						const fullAddress = `${rowData.street || ''} ${rowData.house || ''}`.toLowerCase();
+						return fullAddress.includes(searchTerm);
+					}
+				},
+				{ 
+					title: 'Телефон', 
+					field: 'phone', 
+					width: 260, // 150
+					sorter: 'string',
+					headerFilter: 'input',
+					headerFilterPlaceholder: 'Поиск...',
+					formatter: (cell) => {
+						const value = cell.getValue();
+						return value || '-';
+					}
+				},
+				{ 
+					title: 'Дата добавления', 
+					field: 'date_store', 
+					width: 120,
+					sorter: 'date',
+					headerFilter: 'input',
+					headerFilterPlaceholder: 'ДД.ММ.ГГГГ',
+					// Кастомная функция форматирования для отображения
+					formatter: (cell) => {
+						const value = cell.getValue();
+						return this.formatDisplayDate(value);
+					},
+					// Кастомная функция для фильтрации
+					headerFilterFunc: (headerValue, rowValue, rowData, filterParams) => {
+						if (!headerValue) return true;
+						
+						// Преобразуем введенное значение ДД.ММ.ГГГГ в объект Date
+						const parts = headerValue.split('.');
+						if (parts.length !== 3) return false;
+						
+						const day = parseInt(parts[0], 10);
+						const month = parseInt(parts[1], 10) - 1;
+						const year = parseInt(parts[2], 10);
+						
+						const filterDate = new Date(year, month, day);
+						
+						// Преобразуем дату из строки YYYY-MM-DD в объект Date
+						const rowDateParts = rowValue.split('-');
+						const rowDate = new Date(
+							parseInt(rowDateParts[0], 10),
+							parseInt(rowDateParts[1], 10) - 1,
+							parseInt(rowDateParts[2], 10)
+						);
+						
+						// Сравниваем даты (без учета времени)
+						return filterDate.toDateString() === rowDate.toDateString();
+					}
+				},
+				{
+					title: 'Действия',
+					width: 150, // 100
+					hozAlign: 'center',
+					formatter: (cell) => {
+						const row = cell.getRow();
+						const data = row.getData();
+						return `
+							<button class="edit-btn" title="Редактировать" data-id="${data.id}">
+								✏️
+							</button>
+							<button class="delete-btn" title="Удалить" data-id="${data.id}">
+								🗑️
+							</button>
+						`;
+					},
+					cellClick: (e, cell) => {
+						const data = cell.getRow().getData();
+						const target = e.target;
+						
+						if (target.classList.contains('edit-btn') || target.closest('.edit-btn')) {
+							this.editShop(data.id);
+						} else if (target.classList.contains('delete-btn') || target.closest('.delete-btn')) {
+							this.deleteShop(data.id);
+						}
+					}
+				}
+			],
+			
+			// Локализация
+			locale: true,
+			langs: {
+				'ru-ru': {
+					'pagination': {
+						'page_size': 'Записей на странице',
+						'first': 'Первая',
+						'first_title': 'Первая страница',
+						'last': 'Последняя',
+						'last_title': 'Последняя страница',
+						'prev': 'Предыдущая',
+						'prev_title': 'Предыдущая страница',
+						'next': 'Следующая',
+						'next_title': 'Следующая страница',
+						'all': 'Все'
+					}
+				}
+			}
+		});
+		
+		console.log('Таблица магазинов Tabulator инициализирована');
+	}
 	
 	// Поиск магазина по его ID
 	async findShopById(shopId) {
 		const response = await apiClient.request('stores', 'GET');
 		const shops = response.data || [];
 		return shops.find(s => s.id === shopId);
+	}
+	
+	/**
+	 * Форматирование даты для отображения
+	 */
+	formatDisplayDate(dateStr) {
+		if (!dateStr) return '';
+		const [year, month, day] = dateStr.split('-');
+		return `${day}.${month}.${year}`;
 	}
 
     // ФОРМА МАГАЗИНА
@@ -394,14 +558,8 @@ class AdminPanel {
 	async editShop(shopId) {
 		try {
 			console.log('Редактирование магазина ID:', shopId);
-			const shop = await this.findShopById(shopId);
-			
-			if (shop) {
-				console.log('Найден магазин:', shop);
-				this.showShopForm(shop);
-			} else {
-				throw new Error('Магазин не найден');
-			}
+			const shop = await this.findById('stores', shopId);
+			this.showShopForm(shop);
 		} catch (error) {
 			console.error('Ошибка загрузки магазина:', error);
 			this.showNotification('Ошибка: ' + error.message, 'error');
@@ -415,11 +573,11 @@ class AdminPanel {
 		
 		try {
 			console.log('Удаление магазина ID:', shopId);
-			const result = await apiClient.request(`stores/${shopId}`, 'DELETE');
+			const result = await apiClient.request(`stores`, 'DELETE', { id: shopId });
 			
 			if (result.success) {
 				this.showNotification('Магазин удалён', 'success');
-				await this.loadShopsData();
+				await this.loadShopsData(); // Перезагружаем данные
 			} else {
 				throw new Error(result.error || 'Ошибка удаления');
 			}
@@ -630,22 +788,15 @@ class AdminPanel {
 	}
 
     async editCity(cityId) {
-        try {
-            console.log('Редактирование города ID:', cityId);
-			const city = await this.findCityById(cityId);
-            
-            if (city) {
-				console.log('Найден город:', city);
-                this.showCityForm(city);
-            } else {
-                throw new Error('Город не найден');
-            }
-            
-        } catch (error) {
-            console.error('Ошибка загрузки города:', error);
-            this.showNotification('Ошибка: ' + error.message, 'error');
-        }
-    }
+		try {
+			console.log('Редактирование города ID:', cityId);
+			const city = await this.findById('cities', cityId);
+			this.showCityForm(city);
+		} catch (error) {
+			console.error('Ошибка загрузки города:', error);
+			this.showNotification('Ошибка: ' + error.message, 'error');
+		}
+	}
 
     async deleteCity(cityId) {
         if (!confirm('Удалить этот город? Это действие нельзя отменить.')) {
@@ -796,6 +947,7 @@ class AdminPanel {
 				result = await apiClient.request('categories', 'POST', formData);
 			}
 			
+			// Проверяем успешность ответа
 			if (result && result.success) {
 				this.showNotification(
 					categoryId ? 'Категория обновлена!' : 'Категория добавлена!', 
@@ -817,15 +969,8 @@ class AdminPanel {
 	async editCategory(categoryId) {
 		try {
 			console.log('Редактирование категории ID:', categoryId);
-			const category = await this.findCategoryById(categoryId);
-			
-			if (category) {
-				console.log('Найдена категория:', category);
-				this.showCategoryForm(category);
-			} else {
-				throw new Error('Категория не найдена');
-			}
-			
+			const category = await this.findById('categories', categoryId);
+			this.showCategoryForm(category);
 		} catch (error) {
 			console.error('Ошибка загрузки категории:', error);
 			this.showNotification('Ошибка: ' + error.message, 'error');
@@ -836,9 +981,10 @@ class AdminPanel {
 		if (!confirm('Удалить эту категорию?')) return;
 		
 		try {
-			const result = await apiClient.request(`categories/${categoryId}`, 'DELETE');
+			// DELETE запрос с id в параметрах URL
+			const result = await apiClient.request(`categories?id=${categoryId}`, 'DELETE');
 			
-			if (result.success) {
+			if (result && result.success) {
 				this.showNotification('Категория удалена', 'success');
 				await this.loadCategoriesData();
 			} else {

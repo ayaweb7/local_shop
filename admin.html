@@ -3,8 +3,9 @@
 <html>
 <head>
     <title>Админ-панель - Трекер покупок</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/tabulator/5.4.4/css/tabulator.min.css" rel="stylesheet">
-    <link href="css/styles.css" rel="stylesheet">
+    <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/tabulator/5.4.4/css/tabulator.min.css" rel="stylesheet"> -->
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet">
+	<link href="css/styles.css" rel="stylesheet">
 	<meta charset="UTF-8">
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head>
@@ -129,7 +130,8 @@
 				
 				<div class="form-group">
 					<label for="category-description">Описание</label>
-					<textarea id="category-description" rows="3"></textarea>
+					<textarea id="category-description" rows="1" cols="60" placeholder="Например: разная домашняя мелочь"></textarea>
+					<small class="form-hint">Например: разная домашняя мелочь</small>
 				</div>
 				
 				<div class="form-group">
@@ -158,7 +160,12 @@
 			
 			// Определяем, какая вкладка активна
 			if (document.getElementById('shops-section').classList.contains('active')) {
-				data = window.shopsData || [];
+				// Для магазинов используем данные из таблицы Tabulator
+				if (window.adminPanel && window.adminPanel.shopsTable) {
+					data = window.adminPanel.shopsTable.getData();
+				} else {
+					data = window.shopsData || [];
+				}
 				filename = 'shops';
 			} else if (document.getElementById('cities-section').classList.contains('active')) {
 				data = window.citiesData || [];

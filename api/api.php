@@ -444,17 +444,129 @@ function handleCities($db) {
     echo json_encode(['success' => false, 'error' => 'Метод не поддерживается']);
 }
 
-// ==================== ОБРАБОТЧИК КАТЕГОРИЙ (MySQLi) ====================
+// ==================== ОБРАБОТЧИК КАТЕГОРИЙ (MySQLi) с поддержкой CRUD ====================
 function handleCategories($db) {
-	$sql = "SELECT * FROM categories WHERE is_active = 1 ORDER BY sort_order, name";
-    $result = $db->query($sql);
-    
-    $categories = [];
-    while ($row = $result->fetch_assoc()) {
-        $categories[] = $row;
+    $method = $_SERVER['REQUEST_METHOD'];
+
+    // --- GET: Получение списка категорий ---
+    if ($method === 'GET') {
+        $sql = "SELECT * FROM categories WHERE is_active = 1 ORDER BY sort_order, name";
+        $result = $db->query($sql);
+        
+        if (!$result) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $db->error]);
+            return;
+        }
+        
+        $categories = [];
+        while ($row = $result->fetch_assoc()) {
+            $categories[] = $row;
+        }
+        
+        echo json_encode(['success' => true, 'data' => $categories], JSON_UNESCAPED_UNICODE);
+        return;
     }
-    
-    echo json_encode(['data' => $categories], JSON_UNESCAPED_UNICODE);
+
+    // --- POST: Добавление/обновление категории ---
+    if ($method === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Неверный формат JSON']);
+            return;
+        }
+
+        // Валидация обязательных полей
+        if (empty($input['name'])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Название категории обязательно']);
+            return;
+        }
+
+        $name = $db->real_escape_string($input['name']);
+        $icon = $db->real_escape_string($input['icon'] ?? '📦');
+        $color = $db->real_escape_string($input['color'] ?? '#007bff');
+        $description = $db->real_escape_string($input['description'] ?? '');
+        $sort_order = isset($input['sort_order']) ? intval($input['sort_order']) : 100;
+        $is_active = isset($input['is_active']) ? intval($input['is_active']) : 1;
+
+        // Проверяем, есть ли id (редактирование) или нет (добавление)
+        if (isset($input['id']) && !empty($input['id'])) {
+            // Редактирование
+            $id = intval($input['id']);
+            $sql = "UPDATE categories SET 
+                    name = '$name',
+                    icon = '$icon',
+                    color = '$color',
+                    description = '$description',
+                    sort_order = $sort_order,
+                    is_active = $is_active,
+                    updated_at = CURRENT_TIMESTAMP
+                    WHERE id = $id";
+
+            if ($db->query($sql)) {
+                echo json_encode(['success' => true, 'message' => 'Категория обновлена']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => $db->error]);
+            }
+        } else {
+            // Добавление
+            $sql = "INSERT INTO categories (name, icon, color, description, sort_order, is_active) 
+                    VALUES ('$name', '$icon', '$color', '$description', $sort_order, $is_active)";
+
+            if ($db->query($sql)) {
+                $new_id = $db->insert_id;
+                echo json_encode(['success' => true, 'message' => 'Категория добавлена', 'id' => $new_id]);
+            } else {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => $db->error]);
+            }
+        }
+        return;
+    }
+
+    // --- DELETE: Удаление категории ---
+    if ($method === 'DELETE') {
+        // ID может быть передан как параметр в URL: ?request=categories&id=123
+        $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+        
+        // Или в теле запроса
+        if (!$id) {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $id = isset($input['id']) ? intval($input['id']) : 0;
+        }
+        
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Не указан ID категории']);
+            return;
+        }
+
+        // Проверяем, есть ли покупки с этой категорией
+        $checkSql = "SELECT COUNT(*) as count FROM shops WHERE category_id = $id";
+        $checkResult = $db->query($checkSql);
+        $row = $checkResult->fetch_assoc();
+        
+        if ($row['count'] > 0) {
+            http_response_code(409); // Conflict
+            echo json_encode(['success' => false, 'error' => 'Нельзя удалить категорию, в которой есть покупки']);
+            return;
+        }
+
+        $sql = "DELETE FROM categories WHERE id = $id";
+        if ($db->query($sql)) {
+            echo json_encode(['success' => true, 'message' => 'Категория удалена']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $db->error]);
+        }
+        return;
+    }
+
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Метод не поддерживается']);
 }
 
 // ОБРАБОТКА СТАТИСТИКИ ПО КАТЕГОРИЯМ с поддержкой фильтров:
