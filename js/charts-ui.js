@@ -36,6 +36,9 @@ let showDataLabels = true;
 /** @type {boolean} Показывать проценты на круговых диаграммах */
 let showPercentages = false;
 
+// ДОБАВИТЬ: глобальная переменная для доступа из других модулей
+window.showPercentages = false;
+
 /** @type {Object} Настройки для сравнения периодов */
 let comparisonSettings = {
     type: 'year',
@@ -71,6 +74,14 @@ const monthNames = [
     'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
     'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
 ];
+
+// Глобальная переменная для хранения текущего периода
+let currentPeriodText = 'весь период';
+
+// ДОБАВИТЬ глобальные переменные для заголовков
+window.currentLeftTitle = '';
+window.currentRightTitle = '';
+window.currentPeriodText = 'весь период';
 
 // ============================================
 // ИНИЦИАЛИЗАЦИЯ СТРАНИЦЫ
@@ -331,16 +342,26 @@ function updateCharts() {
     // Фильтруем данные
     let filteredPurchases = [...window.chartData.purchases];
     
+	// Формируем текст периода
+	let periodText = 'весь период';
+	
     if (currentFilter === 'year' && currentYear) {
-        filteredPurchases = unifiedProcessor.filterByYear(filteredPurchases, currentYear);
+        // filteredPurchases = unifiedProcessor.filterByYear(filteredPurchases, currentYear);
+		periodText = `${currentYear} год`;
     } else if (currentFilter === 'month' && currentYear && currentMonth) {
         filteredPurchases = unifiedProcessor.filterByYearMonth(
             filteredPurchases, 
             currentYear, 
             currentMonth
         );
+		const monthNames = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь',
+                           'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+        periodText = `${monthNames[parseInt(currentMonth)-1]} ${currentYear} года`;
     }
     
+	// Сохраняем глобально
+    currentPeriodText = periodText;
+	
     console.log(`После фильтрации: ${filteredPurchases.length} покупок`);
     
     // Управление видимостью специальных панелей
@@ -351,7 +372,10 @@ function updateCharts() {
     document.getElementById('combo-controls').style.display = 
         currentChartType === 'combo' ? 'block' : 'none';
     
-    // Создаем графики в зависимости от типа
+    // Обновляем заголовки в зависимости от типа
+    updateChartTitles(currentChartType, periodText);
+	
+	// Создаем графики в зависимости от типа
     switch(currentChartType) {
         case 'categories':
             createCategoryCharts(filteredPurchases);
@@ -380,6 +404,50 @@ function updateCharts() {
     }
 }
 
+/**
+ * Обновление заголовков графиков
+ */
+function updateChartTitles(chartType, periodText) {
+    let leftTitle = '';
+    let rightTitle = '';
+    
+    switch(chartType) {
+        case 'categories':
+            leftTitle = `ТОП-10 категорий по сумме расходов за ${periodText}`;
+            rightTitle = `ТОП-10 категорий по количеству покупок за ${periodText}`;
+            break;
+        case 'months':
+            leftTitle = `Месячные расходы за ${periodText}`;
+            rightTitle = `Количество покупок по месяцам за ${periodText}`;
+            break;
+        case 'years':
+            leftTitle = `Годовые расходы за ${periodText}`;
+            rightTitle = `Количество покупок по годам за ${periodText}`;
+            break;
+        case 'stores':
+            leftTitle = `ТОП-10 магазинов по сумме расходов за ${periodText}`;
+            rightTitle = `ТОП-10 магазинов по количеству покупок за ${periodText}`;
+            break;
+        case 'products':
+            leftTitle = `ТОП-10 товаров по сумме расходов за ${periodText}`;
+            rightTitle = `ТОП-10 товаров по количеству покупок за ${periodText}`;
+            break;
+        default:
+            leftTitle = `Сумма расходов за ${periodText}`;
+            rightTitle = `Количество покупок за ${periodText}`;
+    }
+    
+    const leftTitleElem = document.getElementById('left-chart-title');
+    const rightTitleElem = document.getElementById('right-chart-title');
+    
+    if (leftTitleElem) leftTitleElem.textContent = leftTitle;
+    if (rightTitleElem) rightTitleElem.textContent = rightTitle;
+    
+    // Сохраняем заголовки для экспорта
+    window.currentLeftTitle = leftTitle;
+    window.currentRightTitle = rightTitle;
+}
+
 // ============================================
 // ФУНКЦИИ СОЗДАНИЯ КОНКРЕТНЫХ ГРАФИКОВ
 // ============================================
@@ -391,13 +459,18 @@ function updateCharts() {
 function createCategoryCharts(purchases) {
     console.log('Создание графиков по категориям, тип:', currentViewType);
     
+	// Обновляем заголовки перед созданием графиков
+    updateChartTitles('categories', currentPeriodText);
+	
     chartManager.createCategoryPair(
         { left: 'left-chart', right: 'right-chart' },
         purchases,
         window.chartData.categories,
         {
-            limit: 25,
-            type: currentViewType
+            type: currentViewType,
+			limit: 10,
+            leftTitle: window.currentLeftTitle,
+            rightTitle: window.currentRightTitle
         }
     );
 }
@@ -409,17 +482,22 @@ function createCategoryCharts(purchases) {
 function createMonthlyCharts(purchases) {
     console.log('Создание графиков по месяцам, тип:', currentViewType);
     
+	// Обновляем заголовки перед созданием графиков
+	updateChartTitles('months', currentPeriodText);
+	
     // Для месяцев ограничиваем допустимые типы
-    let allowedType = currentViewType;
-    if (allowedType === 'pie' || allowedType === 'doughnut') {
-        allowedType = 'bar'; // По умолчанию вертикальная
-    }
+    // let allowedType = currentViewType;
+    // if (allowedType === 'pie' || allowedType === 'doughnut') {
+    //     allowedType = 'bar'; // По умолчанию вертикальная
+    // }
     
     chartManager.createMonthlyPair(
         { left: 'left-chart', right: 'right-chart' },
         purchases,
         {
-            type: allowedType
+            type: currentViewType,
+            leftTitle: window.currentLeftTitle,
+            rightTitle: window.currentRightTitle
         }
     );
 }
@@ -431,16 +509,21 @@ function createMonthlyCharts(purchases) {
 function createYearlyCharts(purchases) {
     console.log('Создание графиков по годам, тип:', currentViewType);
     
-    let allowedType = currentViewType;
-    if (allowedType === 'pie' || allowedType === 'doughnut') {
-        allowedType = 'bar';
-    }
+	// Обновляем заголовки перед созданием графиков
+	updateChartTitles('years', currentPeriodText);
+	
+    // let allowedType = currentViewType;
+    // if (allowedType === 'pie' || allowedType === 'doughnut') {
+    //     allowedType = 'bar';
+    // }
     
     chartManager.createYearlyPair(
         { left: 'left-chart', right: 'right-chart' },
         purchases,
         {
-            type: allowedType
+            type: currentViewType,
+            leftTitle: window.currentLeftTitle,
+            rightTitle: window.currentRightTitle
         }
     );
 }
@@ -452,6 +535,9 @@ function createYearlyCharts(purchases) {
 function createStoreCharts(purchases) {
     console.log('Создание графиков по магазинам, тип:', currentViewType);
     
+	// Обновляем заголовки перед созданием графиков
+	updateChartTitles('stores', currentPeriodText);
+	
     if (!window.chartData.stores || window.chartData.stores.length === 0) {
         console.warn('Нет данных о магазинах');
         document.getElementById('left-chart-title').textContent = 'Нет данных о магазинах';
@@ -465,7 +551,9 @@ function createStoreCharts(purchases) {
         window.chartData.stores,
         {
             type: currentViewType,
-            limit: 10
+            limit: 10,
+            leftTitle: window.currentLeftTitle,
+            rightTitle: window.currentRightTitle
         }
     );
 }
@@ -477,18 +565,23 @@ function createStoreCharts(purchases) {
 function createProductCharts(purchases) {
     console.log('Создание графиков по товарам, тип:', currentViewType);
     
-    let allowedType = currentViewType;
+	// Обновляем заголовки перед созданием графиков
+	updateChartTitles('products', currentPeriodText);
+	
+    // let allowedType = currentViewType;
     // Для товаров лучше подходит горизонтальная
-    if (allowedType === 'pie' || allowedType === 'doughnut') {
-        allowedType = 'horizontalBar';
-    }
+    // if (allowedType === 'pie' || allowedType === 'doughnut') {
+    //     allowedType = 'horizontalBar';
+    // }
     
     chartManager.createProductPair(
         { left: 'left-chart', right: 'right-chart' },
         purchases,
         {
-            type: allowedType,
-            limit: 10
+            type: currentViewType,
+            limit: 10,
+            leftTitle: window.currentLeftTitle,
+            rightTitle: window.currentRightTitle
         }
     );
 }
@@ -603,6 +696,9 @@ function setupChartOptions() {
     
     percentagesCheckbox?.addEventListener('change', function() {
         showPercentages = this.checked;
+		
+		// Обновляем глобальную переменную для круговых диаграмм
+        window.showPercentages = showPercentages;
         updateAllChartsDataLabels();
     });
 }
@@ -613,18 +709,27 @@ function setupChartOptions() {
 function updateAllChartsDataLabels() {
     if (!window.chartManager) return;
     
-    window.chartManager.charts.forEach((chart, canvasId) => {
-        updateChartDataLabels(chart);
+    // Обновляем все одиночные графики
+	window.chartManager.charts.forEach((chart, canvasId) => {
+        if (chart && chart.chart) {
+            updateChartDataLabels(chart);
+        }
     });
     
-    window.chartManager.chartPairs.forEach(pair => {
-        if (pair.leftChart) updateChartDataLabels(pair.leftChart);
-        if (pair.rightChart) updateChartDataLabels(pair.rightChart);
+    // Обновляем пары графиков
+    window.chartManager.chartPairs.forEach((pair, key) => {
+        if (pair.leftChart && pair.leftChart.chart) {
+            updateChartDataLabels(pair.leftChart);
+        }
+        if (pair.rightChart && pair.rightChart.chart) {
+            updateChartDataLabels(pair.rightChart);
+        }
     });
 }
 
 /**
  * Обновление подписей на конкретном графике
+ * (исправленная версия - только целые числа)
  * @param {Object} chartInstance - экземпляр графика
  */
 function updateChartDataLabels(chartInstance) {
@@ -636,18 +741,46 @@ function updateChartDataLabels(chartInstance) {
     if (!config.options.plugins) config.options.plugins = {};
     if (!config.options.plugins.datalabels) config.options.plugins.datalabels = {};
     
-    config.options.plugins.datalabels.display = showDataLabels;
+    // Обновляем видимость
+	config.options.plugins.datalabels.display = showDataLabels;
+	// Временно добавьте в updateChartDataLabels:
+	console.log('updateChartDataLabels called for chart type:', config.type);
+	console.log('Formatter set to:', config.options.plugins.datalabels.formatter.toString());
     
-    if (config.type === 'pie' || config.type === 'doughnut') {
-        config.options.plugins.datalabels.formatter = (value, context) => {
-            if (showPercentages) {
-                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+	// ЕДИНЫЙ ФОРМАТТЕР ДЛЯ ВСЕХ ТИПОВ ГРАФИКОВ - ТОЛЬКО ЦЕЛЫЕ ЧИСЛА
+    config.options.plugins.datalabels.formatter = (value, context) => {
+        // Округляем до целого
+        const rounded = Math.round(value);
+        const datasetLabel = context.dataset.label || '';
+        const chartType = config.type;
+        
+        // Для круговых диаграмм
+        if (chartType === 'pie' || chartType === 'doughnut') {
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = total > 0 ? Math.round((rounded / total) * 100) : 0;
+            
+            if (window.showPercentages) {
                 return percentage + '%';
-            } else {
-                return ChartUtils.formatCurrency(value, '', 0);
             }
-        };
+            return ChartUtils.formatNumber(rounded, 0);
+        }
+        
+        // Для всех остальных типов (bar, horizontalBar, line)
+        // Всегда показываем целое число без копеек
+        return ChartUtils.formatNumber(rounded, 0);
+    };
+    
+    // Обновляем цвет и стиль для лучшей читаемости
+    config.options.plugins.datalabels.color = '#333';
+    config.options.plugins.datalabels.font = {
+        weight: 'bold',
+        size: 11
+    };
+    
+    // Для круговых диаграмм - белый текст
+    if (config.type === 'pie' || config.type === 'doughnut') {
+        config.options.plugins.datalabels.color = '#333';
+        config.options.plugins.datalabels.textShadow = '0 1px 2px rgba(0,0,0,0.5)';
     }
     
     chart.update();

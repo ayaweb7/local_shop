@@ -23,6 +23,7 @@ data/          # Если данные большие/чувствительны
 *.pem
 *.key
 date_base.php
+deepseek.txt
 
 # Операционные системные файлы
 .DS_Store

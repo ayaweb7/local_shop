@@ -29,40 +29,58 @@
 
 class ChartUtils {
     /**
-     * Форматирование валюты с пробелами
+     * Форматирование валюты с пробелами (исправленная версия)
      */
     static formatCurrency(value, currency = '₽') {
         if (value === null || value === undefined || isNaN(value)) {
             return `0 ${currency}`;
         }
         
-        const num = parseFloat(value);
-		// Округляем до 2 знаков
-		const rounded = Math.round(num * 100) / 100;
-        const [integerPart, decimalPart] = Math.abs(rounded).toFixed(2).split('.');
-        const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-        const sign = rounded < 0 ? '-' : '';
+        // Преобразуем в число и округляем до 2 знаков
+        let num = parseFloat(value);
+        if (isNaN(num)) return `0 ${currency}`;
         
-        return `${sign}${formattedInteger}.${decimalPart} ${currency}`;
+        // Округляем до 2 знаков после запятой
+        num = Math.round(num * 100) / 100;
+        
+        // Разделяем целую и дробную части
+        const [integerPart, decimalPart] = num.toFixed(2).split('.');
+        
+        // Форматируем целую часть с пробелами (каждые 3 цифры)
+        const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        
+        // Возвращаем отформатированное значение
+        if (decimalPart && decimalPart !== '00') {
+            return `${formattedInteger}.${decimalPart} ${currency}`;
+        }
+        return `${formattedInteger} ${currency}`;
     }
     
     /**
-     * Форматирование числа с пробелами
+     * Форматирование числа с пробелами (исправленная версия)
      */
     static formatNumber(value, decimals = 0) {
         if (value === null || value === undefined || isNaN(value)) {
             return '0';
         }
         
-        const num = parseFloat(value);
-        const [integerPart, decimalPart] = Math.abs(num).toFixed(decimals).split('.');
-        const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-        const sign = num < 0 ? '-' : '';
+        let num = parseFloat(value);
+        if (isNaN(num)) return '0';
         
-        if (decimals > 0) {
-            return `${sign}${formattedInteger}.${decimalPart}`;
+        // Округляем до нужного количества знаков
+        const factor = Math.pow(10, decimals);
+        num = Math.round(num * factor) / factor;
+        
+        // Разделяем целую и дробную части
+        const [integerPart, decimalPart] = num.toFixed(decimals).split('.');
+        
+        // Форматируем целую часть с пробелами
+        const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        
+        if (decimals > 0 && decimalPart) {
+            return `${formattedInteger}.${decimalPart}`;
         }
-        return `${sign}${formattedInteger}`;
+        return formattedInteger;
     }
     
     /**
@@ -772,6 +790,26 @@ class BaseChart {
 						align: 'top',
 						offset: 4,
 						
+						// ИСПРАВЛЕННЫЙ ФОРМАТТЕР - только целые числа
+						formatter: (value, context) => {
+							const rounded = Math.round(value);
+							const datasetLabel = context.dataset.label || '';
+							
+							// Для круговых диаграмм
+							if (context.chart.config.type === 'pie' || context.chart.config.type === 'doughnut') {
+								const total = context.dataset.data.reduce((a, b) => a + b, 0);
+								const percentage = total > 0 ? Math.round((rounded / total) * 100) : 0;
+								
+								if (window.showPercentages) {
+									return percentage + '%';
+								}
+								return ChartUtils.formatNumber(rounded, 0);
+							}
+							
+							// Для остальных типов
+							return ChartUtils.formatNumber(rounded, 0);
+						},
+						
 						// Анимация подписей
 						animation: {
 							duration: 300,
@@ -833,9 +871,15 @@ class BaseChart {
 	}
 	
 	/**
-     * Форматирование подписи данных
+     * Форматирование подписи данных (исправленная версия)
      */
     formatDataLabel(value, context, chartType) {
+		// Округляем значение до 2 знаков
+		// let roundedValue = Math.round(value * 100) / 100;
+		
+		// Округляем значение до целого числа
+		let roundedValue = Math.round(value);
+		
         const datasetLabel = context.dataset.label || '';
         
         // Определяем формат в зависимости от типа данных
@@ -848,65 +892,96 @@ class BaseChart {
                 // Для круговых диаграмм можно показывать проценты
                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                 const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                return `${ChartUtils.formatCurrency(value, '', 0)}\n(${percentage}%)`;
+                return `${ChartUtils.formatNumber(roundedValue, 0)}\n(${percentage}%)`;
             }
             
-            return ChartUtils.formatCurrency(value, '', 0); // Без символа валюты в подписи
+			// Для столбчатых диаграмм - только целое число
+            return ChartUtils.formatNumber(roundedValue, 0); // Без символа валюты в подписи
         }
         
         // Для количественных значений
-        return ChartUtils.formatNumber(value, 0);
+		if (datasetLabel.toLowerCase().includes('количество')) {
+			return ChartUtils.formatNumber(roundedValue, 0);
+		}
+		
+		// По умолчанию
+		return ChartUtils.formatNumber(roundedValue, 0);
     }
 	
 	/**
-	 * Конфигурация подписей для разных типов графиков
+	 * Конфигурация подписей для разных типов графиков (исправленная версия)
 	 */
 	getDataLabelsConfig(chartType) {
-        switch(chartType) {
-            case 'bar':
-                return {
-                    anchor: 'end',
-                    align: 'top',
-                    offset: 2,
-                    clamp: true,
-                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                    borderRadius: 4,
-                    padding: 4
-                };
-                
-            case 'horizontalBar':
-                return {
-                    anchor: 'end',
-                    align: 'center',
-                    offset: 2,
-                    clamp: true,
-                    textAlign: 'left'
-                };
-                
-            case 'pie':
-            case 'doughnut':
-                return {
-                    anchor: 'center',
-                    align: 'center',
-                    color: '#fff',
-                    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-                    font: {
-                        size: 10
-                    }
-                };
-                
-            case 'line':
-                return {
-                    anchor: 'center',
-                    align: 'top',
-                    offset: 10,
-                    display: false // Для линейных графиков лучше отключить
-                };
-                
-            default:
-                return {};
-        }
-    }
+		const baseConfig = {
+			color: '#333',
+			font: {
+				weight: 'bold',
+				size: 11
+			},
+			// ОСНОВНОЙ ФОРМАТТЕР - только целые числа
+			formatter: (value, context) => {
+				// Округляем значение
+				// const rounded = Math.round(value * 100) / 100;
+				
+				// Округляем до целого числа
+				const rounded = Math.round(value);
+				return ChartUtils.formatNumber(rounded, 0);
+			}
+		};
+		
+		switch(chartType) {
+			case 'bar':
+				return {
+					...baseConfig,
+					anchor: 'end',
+					align: 'top',
+					offset: 2,
+					clamp: true,
+					backgroundColor: 'rgba(255, 255, 255, 0.7)',
+					borderRadius: 3,
+					padding: { left: 4, right: 4, top: 2, bottom: 2 }
+				};
+				
+			case 'horizontalBar':
+				return {
+					...baseConfig,
+					anchor: 'end',
+					align: 'right',
+					offset: 4,
+					clamp: true,
+					backgroundColor: 'rgba(255, 255, 255, 0.7)',
+					borderRadius: 3,
+					padding: { left: 4, right: 4, top: 2, bottom: 2 }
+				};
+				
+			case 'pie':
+			case 'doughnut':
+				return {
+					...baseConfig,
+					anchor: 'end',
+					align: 'center',
+					color: '#333',
+					textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+					backgroundColor: 'rgba(255, 255, 255, 0.7)',
+					borderRadius: 3,
+					font: { size: 11, weight: 'bold' },
+					formatter: (value, context) => {
+						const rounded = Math.round(value);
+						const total = context.dataset.data.reduce((a, b) => a + b, 0);
+						const percentage = total > 0 ? Math.round((rounded / total) * 100) : 0;
+						
+						// Если включены проценты, показываем их, иначе сумму
+						if (window.showPercentages) {
+							return percentage + '%';
+						}
+						return ChartUtils.formatNumber(rounded, 0);
+					}
+				};
+				
+			default:
+				return baseConfig;
+		}
+	}
     
     /**
      * Типоспецифичная конфигурация
@@ -1013,6 +1088,14 @@ class BaseChart {
                 labelsCount: this.config.data?.labels?.length,
                 datasetsCount: this.config.data?.datasets?.length
             });
+			
+			// Применяем настройки подписей перед созданием графика
+			if (this.config.options && this.config.options.plugins) {
+				this.config.options.plugins.datalabels = {
+					...this.getDataLabelsConfig(this.chartType),
+					display: window.showDataLabels !== undefined ? window.showDataLabels : true
+				};
+			}
             
             // Создаем график
             this.chart = new Chart(this.ctx, this.config);
@@ -1432,8 +1515,9 @@ class ChartManager {
                 ...options,
                 type: options.type || 'horizontalBar', // Используем переданный тип
                 indexAxis: indexAxis,
-				leftTitle: options.leftTitle || 'Сумма расходов по категориям',
-                rightTitle: options.rightTitle || 'Количество покупок по категориям'
+				leftTitle: options.leftTitle || 'ТОП-10 категорий по сумме расходов',
+                rightTitle: options.rightTitle || 'ТОП-10 категорий по количеству покупок',
+				limit: options.limit || 10
             }
         );
     }
@@ -1503,8 +1587,8 @@ class ChartManager {
 				...options,
 				type: options.type || 'horizontalBar', // Используем переданный тип
 				indexAxis: indexAxis,
-				leftTitle: options.leftTitle || 'ТОП-10 магазинов по сумме',
-				rightTitle: options.rightTitle || 'ТОП-10 магазинов по количеству',
+				leftTitle: options.leftTitle || 'ТОП-10 магазинов по сумме расходов',
+				rightTitle: options.rightTitle || 'ТОП-10 магазинов по количеству покупок',
 				limit: options.limit || 10
 			}
 		);
@@ -1527,8 +1611,8 @@ class ChartManager {
 				...options,
 				type: options.type || 'horizontalBar', // Используем переданный тип
 				indexAxis: indexAxis,
-				leftTitle: options.leftTitle || 'ТОП-10 товаров по сумме',
-				rightTitle: options.rightTitle || 'ТОП-10 товаров по количеству',
+				leftTitle: options.leftTitle || 'ТОП-10 товаров по сумме расходов',
+				rightTitle: options.rightTitle || 'ТОП-10 товаров по количеству покупок',
 				limit: options.limit || 10
 			}
 		);
@@ -1809,9 +1893,14 @@ class ChartManager {
 	 * Добавление заголовка к экспорту
 	 */
 	addTitleToExport(ctx, chart, width, scale, yOffset) {
-		const title = chart.options?.plugins?.title?.text || 
-					  chart.canvas?.closest('.chart-container')?.querySelector('h3')?.textContent ||
-					  'График покупок';
+		// Получаем заголовок из HTML (уже с периодом)
+		let title = window.currentLeftTitle || 'График покупок';
+    
+		// Если график правый, используем правый заголовок
+		const canvasId = chart.canvas?.id;
+		if (canvasId === 'right-chart' && window.currentRightTitle) {
+			title = window.currentRightTitle;
+		}
 		
 		ctx.fillStyle = '#333';
 		ctx.font = `${24 * scale}px ${ChartThemes.getDefaultTheme().typography.fontFamily}`;
@@ -1866,7 +1955,7 @@ class ChartManager {
 		ctx.fillStyle = '#999';
 		ctx.font = `${10 * scale}px ${ChartThemes.getDefaultTheme().typography.fontFamily}`;
 		ctx.textAlign = 'right';
-		ctx.fillText('Shopping Tracker © ' + new Date().getFullYear(), width - (20 * scale), height - (10 * scale));
+		ctx.fillText('Shopping Tracker NikArt© ' + new Date().getFullYear(), width - (20 * scale), height - (10 * scale));
 	}
 
 	/**
@@ -1950,8 +2039,8 @@ class ChartManager {
 		ctx.fillStyle = options.backgroundColor || 'white';
 		ctx.fillRect(0, 0, collageCanvas.width, collageCanvas.height);
 		
-		// Заголовок коллажа
-		const title = `Сравнительный анализ: ${this.getChartTypeName(currentChartType)}`;
+		// Заголовок коллажа с периодом
+		const title = `Сравнительный анализ: ${this.getChartTypeName(currentChartType)} (${window.currentPeriodText || 'весь период'})`;
 		ctx.fillStyle = '#333';
 		ctx.font = `${28 * scale}px ${ChartThemes.getDefaultTheme().typography.fontFamily}`;
 		ctx.textAlign = 'center';
@@ -2706,7 +2795,7 @@ class UnifiedDataProcessor {
      */
     _processCategories(purchases, categories, options = {}) {
         const stats = {};
-        const limit = options.limit || 0; // Без лимита
+        const limit = options.limit || 10; // Лимит 10
         
         // Собираем статистику
         purchases.forEach(purchase => {
@@ -2850,7 +2939,7 @@ class UnifiedDataProcessor {
             if (!stats[year]) {
                 stats[year] = {
                     year: year,
-                    name: `${year} год`,
+                    name: `${year}`,  // Только год, без слова "год"
                     amount: 0,
                     count: 0
                 };
@@ -2870,7 +2959,7 @@ class UnifiedDataProcessor {
         const amountData = {
             labels: items.map(item => item.name),
             datasets: [{
-                label: 'Сумма расходов, ₽',
+                label: 'Сумма расходов',
                 data: items.map(item => item.amount),
                 backgroundColor: yearColors,
 				borderColor: yearColors.map(color => ChartUtils.darkenColor(color, 0.2)),
@@ -2909,7 +2998,6 @@ class UnifiedDataProcessor {
 				stats[storeId] = {
 					id: storeId,
 					name: store ? store.shop : `Магазин #${storeId}`,
-					city: store ? store.city_name : '',
 					amount: 0,
 					count: 0
 				};
@@ -2943,6 +3031,7 @@ class UnifiedDataProcessor {
 			});
 		};
 		
+		// Упрощённые метки - только название магазина
 		// Формируем данные для amount (сумма)
 		const amountData = {
 			labels: amountSorted.map(item => {
@@ -2950,10 +3039,10 @@ class UnifiedDataProcessor {
 				const name = item.name.length > 20 ? 
 					item.name.substring(0, 20) + '...' : 
 					item.name;
-				return `${name} (${item.city || '?'})`;
+				return `${name}`;
 			}),
 			datasets: [{
-				label: 'Сумма покупок, ₽',
+				label: 'Сумма покупок',
 				data: amountSorted.map(item => item.amount),
 				backgroundColor: generateStoreColors(amountSorted),
 				borderColor: generateStoreColors(amountSorted).map(color => 
@@ -2966,10 +3055,11 @@ class UnifiedDataProcessor {
 		// Формируем данные для count (количество)
 		const countData = {
 			labels: countSorted.map(item => {
+				// Сокращаем длинные названия магазинов
 				const name = item.name.length > 20 ? 
 					item.name.substring(0, 20) + '...' : 
 					item.name;
-				return `${name} (${item.city || '?'})`;
+				return `${name}`;
 			}),
 			datasets: [{
 				label: 'Количество покупок',
@@ -3003,23 +3093,14 @@ class UnifiedDataProcessor {
 			
 			if (!stats[key]) {
 				stats[key] = {
-					name: productName,
+					name: productName,  // Только название товара
 					amount: 0,
-					count: 0,
-					unit: purchase.item || 'шт.',
-					lastPrice: parseFloat(purchase.price) || 0,
-					lastDate: purchase.date
+					count: 0
 				};
 			}
 			
 			stats[key].amount += parseFloat(purchase.amount) || 0;
 			stats[key].count += 1;
-			
-			// Обновляем последнюю цену и дату
-			if (purchase.date > stats[key].lastDate) {
-				stats[key].lastPrice = parseFloat(purchase.price) || 0;
-				stats[key].lastDate = purchase.date;
-			}
 		});
 		
 		// Преобразуем в массивы и сортируем
@@ -3045,31 +3126,12 @@ class UnifiedDataProcessor {
 			});
 		};
 		
-		// Формируем метки с дополнительной информацией
-		const createProductLabel = (item, showPrice = false) => {
-			let label = item.name;
-			
-			// Сокращаем длинные названия
-			if (label.length > 25) {
-				label = label.substring(0, 25) + '...';
-			}
-			
-			// Добавляем единицу измерения
-			label += ` (${item.unit})`;
-			
-			// Можно добавить последнюю цену
-			if (showPrice && item.lastPrice > 0) {
-				label += ` ~${ChartUtils.formatCurrency(item.lastPrice)}`;
-			}
-			
-			return label;
-		};
-		
+		// Простые метки - только название товара
 		// Формируем данные для amount (сумма)
 		const amountData = {
-			labels: amountSorted.map(item => createProductLabel(item, true)),
+			labels: amountSorted.map(item => item.name),
 			datasets: [{
-				label: 'Сумма покупок, ₽',
+				label: 'Сумма покупок',
 				data: amountSorted.map(item => item.amount),
 				backgroundColor: generateProductColors(amountSorted),
 				borderColor: generateProductColors(amountSorted).map(color => 
@@ -3081,7 +3143,7 @@ class UnifiedDataProcessor {
 		
 		// Формируем данные для count (количество)
 		const countData = {
-			labels: countSorted.map(item => createProductLabel(item)),
+			labels: countSorted.map(item => item.name),
 			datasets: [{
 				label: 'Количество покупок',
 				data: countSorted.map(item => item.count),
@@ -3904,6 +3966,25 @@ class ChartPair {
 			
 			let chart;
 			const chartType = options.type;
+			const isAmountChart = options.isAmountChart;
+			
+			// Общие настройки для легенды
+			const legendConfig = {
+				display: true,
+				position: 'top',
+				labels: {
+					// Убираем символ валюты из легенды
+					generateLabels: (chart) => {
+						const datasets = chart.data.datasets;
+						return datasets.map((dataset, i) => ({
+							text: isAmountChart ? dataset.label.replace('₽', '').trim() : dataset.label,
+							fillStyle: dataset.backgroundColor,
+							hidden: false,
+							index: i
+						}));
+					}
+				}
+			};
 			
 			// Определяем, какой класс использовать
 			if (chartType === 'pie' || chartType === 'doughnut') {
@@ -3913,8 +3994,64 @@ class ChartPair {
 						responsive: true,
 						maintainAspectRatio: false,
 						plugins: {
-							legend: { position: 'right' },
-							tooltip: { /* ... ваши настройки ... */ }
+							legend: {
+								position: 'right',
+								labels: {
+									generateLabels: (chart) => {
+										const data = chart.data;
+										if (data.labels.length && data.datasets.length) {
+											return data.labels.map((label, i) => {
+												const dataset = data.datasets[0];
+												const value = dataset.data[i];
+												const total = dataset.data.reduce((a, b) => a + b, 0);
+												const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+												
+												// ОЧИЩАЕМ метку от символов валюты и лишнего текста
+												let cleanLabel = label
+													.replace(/₽/g, '')
+													.replace(/\d+\.\d+ ₽/g, '')
+													.trim();
+												
+												// Для правого графика (количество) не показываем валюту
+												if (!isAmountChart) {
+													return {
+														text: `${cleanLabel}: ${ChartUtils.formatNumber(value, 0)} шт. (${percentage}%)`,
+														fillStyle: dataset.backgroundColor[i],
+														strokeStyle: dataset.borderColor?.[i] || dataset.backgroundColor[i],
+														lineWidth: 1,
+														hidden: false,
+														index: i
+													};
+												}
+												
+												// Для левого графика (сумма) показываем только сумму и проценты без символа ₽
+												return {
+													text: `${cleanLabel}: ${ChartUtils.formatNumber(value, 0)} (${percentage}%)`,
+													fillStyle: dataset.backgroundColor[i],
+													strokeStyle: dataset.borderColor?.[i] || dataset.backgroundColor[i],
+													lineWidth: 1,
+													hidden: false,
+													index: i
+												};
+											});
+										}
+										return [];
+									}
+								}
+							},
+							tooltip: {
+								callbacks: {
+									label: (context) => {
+										const value = context.raw;
+										const total = context.dataset.data.reduce((a, b) => a + b, 0);
+										const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+										if (isAmountChart) {
+											return `${ChartUtils.formatCurrency(value)} (${percentage}%)`;
+										}
+										return `${ChartUtils.formatNumber(value, 0)} шт. (${percentage}%)`;
+									}
+								}
+							}
 						}
 					}
 				});
@@ -3927,26 +4064,26 @@ class ChartPair {
 						maintainAspectRatio: false,
 						indexAxis: 'y', // КЛЮЧЕВОЙ ПАРАМЕТР
 						plugins: {
-							legend: { display: false },
+							legend: legendConfig,
 							tooltip: {
 								callbacks: {
 									label: (context) => {
 										const value = context.raw || 0;
-										if (options.isAmountChart) {
-											return ChartUtils.formatCurrency(value);
-										}
-										return ChartUtils.formatNumber(value, 0) + ' шт.';
-									}
-								}
-							}
-						},
+										if (isAmountChart) {
+											return `${ChartUtils.formatCurrency(value)}`;
+                                    }
+                                    return `${ChartUtils.formatNumber(value, 0)} шт.`;
+                                }
+                            }
+                        }
+                    },
 						scales: {
 							x: {
 								beginAtZero: true,
 								ticks: {
 									callback: (value) => {
-										if (options.isAmountChart) {
-											return ChartUtils.formatCurrency(value);
+										if (isAmountChart) {
+											return ChartUtils.formatNumber(value, 0);
 										}
 										return ChartUtils.formatNumber(value, 0);
 									}
@@ -3991,26 +4128,26 @@ class ChartPair {
 						maintainAspectRatio: false,
 						indexAxis: 'x', // Это значение по умолчанию, но для ясности
 						plugins: {
-							legend: { display: false },
+							legend: legendConfig,
 							tooltip: {
 								callbacks: {
 									label: (context) => {
 										const value = context.raw || 0;
-										if (options.isAmountChart) {
-											return ChartUtils.formatCurrency(value);
-										}
-										return ChartUtils.formatNumber(value, 0) + ' шт.';
-									}
-								}
-							}
-						},
+										if (isAmountChart) {
+											return `${ChartUtils.formatCurrency(value)}`;
+                                    }
+                                    return `${ChartUtils.formatNumber(value, 0)} шт.`;
+                                }
+                            }
+                        }
+                    },
 						scales: {
 							y: {
 								beginAtZero: true,
 								ticks: {
 									callback: (value) => {
-										if (options.isAmountChart) {
-											return ChartUtils.formatCurrency(value);
+										if (isAmountChart) {
+											return ChartUtils.formatNumber(value, 0);
 										}
 										return ChartUtils.formatNumber(value, 0);
 									}
