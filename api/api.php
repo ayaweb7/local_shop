@@ -659,6 +659,7 @@ function getProductPrices($db) {
 			$categoryId = isset($_GET['category_id']) ? intval($_GET['category_id']) : 0;
 			$productName = isset($_GET['product_name']) ? $db->real_escape_string($_GET['product_name']) : '';
 			$characteristic = isset($_GET['characteristic']) ? $db->real_escape_string($_GET['characteristic']) : null;
+			$keywords = isset($_GET['keywords']) ? $db->real_escape_string($_GET['keywords']) : null;
 			$searchMode = isset($_GET['search_mode']) ? $_GET['search_mode'] : 'exact'; // exact, keywords, normalized
 			$dateFrom = isset($_GET['date_from']) ? $db->real_escape_string($_GET['date_from']) : null;
 			$dateTo = isset($_GET['date_to']) ? $db->real_escape_string($_GET['date_to']) : null;
@@ -677,7 +678,7 @@ function getProductPrices($db) {
                 s.date,
                 s.name,
                 s.characteristic,
-                s.normalized_characteristic,
+                s.search_keywords,
                 s.quantity,
                 s.item,
                 s.price,
@@ -694,39 +695,29 @@ function getProductPrices($db) {
                 AND s.name = '$productName'
         ";
         
-        // Добавляем фильтры
-        if ($characteristic && $characteristic !== '') {
-            switch ($searchMode) {
-                case 'keywords':
-                    // Поиск по ключевым словам
-                    $keywords = explode(' ', extractKeywords($characteristic));
-                    $keywordConditions = [];
-                    foreach ($keywords as $keyword) {
-                        if (!empty(trim($keyword))) {
-                            $keywordConditions[] = "s.search_keywords LIKE '%" . $db->real_escape_string($keyword) . "%'";
-                        }
-                    }
-                    if (!empty($keywordConditions)) {
-                        $sql .= " AND (" . implode(' OR ', $keywordConditions) . ")";
-                    }
-                    break;
-                    
-                case 'normalized':
-                    // Поиск по нормализованной характеристике
-                    $normalized = normalizeCharacteristic($characteristic);
-                    $sql .= " AND s.normalized_characteristic LIKE '%$normalized%'";
-                    break;
-                    
-                default:
-                    // Точное совпадение (как было)
-                    $sql .= " AND s.characteristic LIKE '%$characteristic%'";
+        // Поиск по ключевым словам
+        if ($searchMode === 'keywords' && $keywords) {
+            $keywordArray = explode(' ', $keywords);
+            $keywordConditions = [];
+            foreach ($keywordArray as $kw) {
+                if (strlen(trim($kw)) > 0) {
+                    $kwEscaped = $db->real_escape_string(trim($kw));
+                    $keywordConditions[] = "s.search_keywords LIKE '%$kwEscaped%'";
+                }
+            }
+            if (!empty($keywordConditions)) {
+                $sql .= " AND (" . implode(' OR ', $keywordConditions) . ")";
             }
         }
+        // Точное совпадение по характеристике
+        elseif ($searchMode === 'exact' && $characteristic) {
+            $sql .= " AND s.characteristic LIKE '%$characteristic%'";
+        }
         
+        // Фильтры по датам
         if ($dateFrom) {
             $sql .= " AND s.date >= '$dateFrom'";
         }
-        
         if ($dateTo) {
             $sql .= " AND s.date <= '$dateTo'";
         }
@@ -763,6 +754,32 @@ function getProductPrices($db) {
                 $characteristics[] = $row['characteristic'];
             }
         }
+		
+		// --- 3. ПОЛУЧАЕМ УНИКАЛЬНЫЕ КЛЮЧЕВЫЕ СЛОВА для этого товара (для мультиселекта)
+        $keywordsSql = "
+            SELECT DISTINCT search_keywords
+            FROM shops
+            WHERE category_id = $categoryId 
+                AND name = '$productName'
+                AND search_keywords IS NOT NULL
+                AND search_keywords != ''
+            LIMIT 100
+        ";
+        
+        $keywordsResult = $db->query($keywordsSql);
+        $allKeywords = [];
+        if ($keywordsResult) {
+            while ($row = $keywordsResult->fetch_assoc()) {
+                $words = explode(' ', $row['search_keywords']);
+                foreach ($words as $word) {
+                    $cleanWord = trim($word);
+                    if (strlen($cleanWord) > 2 && !in_array($cleanWord, $allKeywords)) {
+                        $allKeywords[] = $cleanWord;
+                    }
+                }
+            }
+        }
+        sort($allKeywords);
         
         // --- 3. ИНФОРМАЦИЯ О КАТЕГОРИИ ---
         $catResult = $db->query("SELECT name, icon, color FROM categories WHERE id = $categoryId");
@@ -784,7 +801,8 @@ function getProductPrices($db) {
                     'total_purchases' => count($purchases),
                     'first_purchase' => !empty($purchases) ? $purchases[0]['date'] : null,
                     'last_purchase' => !empty($purchases) ? $purchases[count($purchases)-1]['date'] : null,
-                    'characteristics' => $characteristics
+                    'characteristics' => [], // Характеристики для точного поиска
+					'keywords' => $allKeywords  // Ключевые слова для мультиселекта
                 ],
                 'purchases' => $purchases,
                 'statistics' => $stats

@@ -607,6 +607,57 @@ body {
     height: 600px; /* Чуть выше для пузырьков */
 }
 
+/* --------------------------------------------------------------------
+   8.1. СТИЛИ ДЛЯ СТАТИСТИКИ ТОВАРА
+   -------------------------------------------------------------------- */
+/* Стили для статистики товара */
+.price-min {
+    color: #27ae60;
+}
+
+.price-max {
+    color: #e74c3c;
+}
+
+.price-sep {
+    color: #7f8c8d;
+    margin: 0 3px;
+}
+
+.trend-up {
+    color: #e74c3c;
+}
+
+.trend-down {
+    color: #27ae60;
+}
+
+.stat-card.normalized {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.stat-card.normalized .stat-title,
+.stat-card.normalized .stat-value,
+.stat-card.normalized .stat-desc {
+    color: white;
+}
+
+.product-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: #666;
+}
+
+.product-category {
+    background: #e9ecef;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
 /* ============================================
    8.1. УЛУЧШЕННОЕ ОТОБРАЖЕНИЕ ХАРАКТЕРИСТИК
    ============================================ */

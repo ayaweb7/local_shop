@@ -60,6 +60,22 @@
                         <option value="">-- Сначала выберите категорию --</option>
                     </select>
                 </div>
+				
+				<div class="form-group">
+					<label>Режим поиска:</label>
+					<select id="search-mode">
+						<option value="keywords" selected>По ключевым словам</option>
+						<option value="exact">Характеристика</option>
+					</select>
+				</div>
+				
+				<div class="form-group">
+					<label>🔑 Ключевые слова</label>
+					<select id="keywords-select" multiple size="4" disabled>
+						<option value="">-- Сначала выберите товар --</option>
+					</select>
+					<small class="form-hint">Удерживайте Ctrl (Cmd) для выбора нескольких слов</small>
+				</div>
                 
                 <div class="form-group">
                     <label>Характеристика (необязательно):</label>
@@ -68,17 +84,24 @@
                     </select>
                 </div>
 				
-				<!-- НОВЫЙ БЛОК: Режим поиска -->
-				<div class="form-group">
-					<label>Режим поиска:</label>
-					<select id="search-mode">
-						<option value="exact">Точное совпадение</option>
-						<option value="keywords">По ключевым словам</option>
-						<option value="normalized">Нормализованный поиск</option>
-					</select>
-					<small class="form-hint">Для неструктурированных данных выбирайте "По ключевым словам"</small>
+				<div class="chart-options">
+					<div class="option-group">
+						<label class="checkbox-label">
+							<input type="checkbox" id="show-normalized" checked>
+							Нормализованные цены (г→кг, мл→л)
+						</label>
+					</div>
+					
+					<!-- НОВЫЙ СЕЛЕКТ -->
+					<div class="option-group">
+						<label for="analysis-type">Анализировать:</label>
+						<select id="analysis-type">
+							<option value="unit_price">💰 Цена за единицу (₽/кг, ₽/л)</option>
+							<option value="total_cost">💵 Стоимость покупки (₽)</option>
+						</select>
+					</div>
 				</div>
-            </div>
+			</div>
             
             <!-- Период анализа -->
             <div style="margin-top: 20px;">
@@ -119,6 +142,7 @@
         <div id="stats-panel" class="stats-panel" style="display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3 style="margin: 0;">📊 Статистика по товару</h3>
+				<div id="product-stats"></div>
                 <span id="product-badge" style="background: #e9ecef; padding: 6px 12px; border-radius: 20px; font-size: 14px;">
                     Загрузка...
                 </span>
@@ -187,6 +211,7 @@
         // Глобальные переменные
         let currentProductData = null;
         let currentPurchases = [];
+		let currentStatistics = null;
         
         // Инициализация при загрузке страницы
         document.addEventListener('DOMContentLoaded', async () => {
@@ -229,66 +254,118 @@
         }
         
         // Настройка обработчиков событий
-        function setupEventListeners() {
-            const categorySelect = document.getElementById('category-select');
-            const productSelect = document.getElementById('product-select');
-            const characteristicSelect = document.getElementById('characteristic-select');
-            const analyzeBtn = document.getElementById('analyze-btn');
-            const resetBtn = document.getElementById('reset-btn');
-            const clearDatesBtn = document.getElementById('clear-dates');
-            const showNormalizedCheckbox = document.getElementById('show-normalized');
-            
-            // Изменение категории
-            categorySelect.addEventListener('change', async function() {
-                const categoryId = this.value;
-                
-                if (categoryId) {
-                    await loadProducts(categoryId);
-                    productSelect.disabled = false;
-                } else {
-                    productSelect.innerHTML = '<option value="">-- Сначала выберите категорию --</option>';
-                    productSelect.disabled = true;
-                    characteristicSelect.innerHTML = '<option value="">-- Все характеристики --</option>';
-                    characteristicSelect.disabled = true;
-                    analyzeBtn.disabled = true;
-                }
-            });
-            
-            // Изменение товара
-            productSelect.addEventListener('change', async function() {
-                const categoryId = categorySelect.value;
-                const productName = this.value;
-                
-                if (categoryId && productName) {
-                    await loadCharacteristics(categoryId, productName);
-                    characteristicSelect.disabled = false;
-                    analyzeBtn.disabled = false;
-                } else {
-                    characteristicSelect.innerHTML = '<option value="">-- Все характеристики --</option>';
-                    characteristicSelect.disabled = true;
-                    analyzeBtn.disabled = true;
-                }
-            });
-            
-            // Кнопка анализа
-            analyzeBtn.addEventListener('click', analyzeProduct);
-            
-            // Кнопка сброса
-            resetBtn.addEventListener('click', resetForm);
-            
-            // Очистка дат
-            clearDatesBtn.addEventListener('click', function() {
-                document.getElementById('date-from').value = '';
-                document.getElementById('date-to').value = '';
-            });
-            
-            // Переключение нормализации
-            showNormalizedCheckbox.addEventListener('change', function() {
-                if (currentProductData) {
-                    updateLineChart(this.checked);
-                }
-            });
-        }
+		function setupEventListeners() {
+			const categorySelect = document.getElementById('category-select');
+			const productSelect = document.getElementById('product-select');
+			const characteristicSelect = document.getElementById('characteristic-select');
+			const keywordsSelect = document.getElementById('keywords-select');
+			const analyzeBtn = document.getElementById('analyze-btn');
+			const resetBtn = document.getElementById('reset-btn');
+			const clearDatesBtn = document.getElementById('clear-dates');
+			const showNormalizedCheckbox = document.getElementById('show-normalized');
+			const searchModeSelect = document.getElementById('search-mode');
+			
+			// Переключение типа анализа
+			const analysisTypeSelect = document.getElementById('analysis-type');
+			analysisTypeSelect.addEventListener('change', function() {
+				if (currentProductData) {
+					updateLineChart(document.getElementById('show-normalized').checked);
+				}
+			});
+			
+			// Проверка наличия элементов
+			if (!categorySelect) console.error('categorySelect не найден');
+			if (!productSelect) console.error('productSelect не найден');
+			
+			// Изменение категории
+			categorySelect.addEventListener('change', async function() {
+				const categoryId = this.value;
+				
+				if (categoryId) {
+					await loadProducts(categoryId);
+					productSelect.disabled = false;
+				} else {
+					productSelect.innerHTML = '<option value="">-- Сначала выберите категорию --</option>';
+					productSelect.disabled = true;
+					characteristicSelect.innerHTML = '<option value="">-- Все характеристики --</option>';
+					characteristicSelect.disabled = true;
+					keywordsSelect.innerHTML = '<option value="">-- Сначала выберите товар --</option>';
+					keywordsSelect.disabled = true;
+					analyzeBtn.disabled = true;
+				}
+			});
+			
+			// Изменение товара
+			productSelect.addEventListener('change', async function() {
+				const categoryId = categorySelect.value;
+				const productName = this.value;
+				
+				console.log('Товар выбран:', productName, 'категория:', categoryId);
+				
+				if (categoryId && productName) {
+					// Загружаем характеристики (для режима точного совпадения)
+					await loadCharacteristics(categoryId, productName);
+					// Загружаем ключевые слова (для режима по ключевым словам)
+					await loadKeywords(categoryId, productName);
+					
+					// Активируем селекты в зависимости от текущего режима
+					const currentMode = searchModeSelect.value;
+					if (currentMode === 'keywords') {
+						characteristicSelect.disabled = true;
+						keywordsSelect.disabled = false;
+					} else {
+						characteristicSelect.disabled = false;
+						keywordsSelect.disabled = true;
+					}
+					analyzeBtn.disabled = false;
+				} else {
+					characteristicSelect.innerHTML = '<option value="">-- Все характеристики --</option>';
+					characteristicSelect.disabled = true;
+					keywordsSelect.innerHTML = '<option value="">-- Сначала выберите товар --</option>';
+					keywordsSelect.disabled = true;
+					analyzeBtn.disabled = true;
+				}
+			});
+			
+			// Режим поиска
+			searchModeSelect.addEventListener('change', function() {
+				console.log('Режим поиска изменён на:', this.value);
+				
+				if (this.value === 'keywords') {
+					// Режим "По ключевым словам"
+					characteristicSelect.disabled = true;
+					characteristicSelect.style.opacity = '0.5';
+					keywordsSelect.disabled = false;
+					keywordsSelect.style.opacity = '1';
+				} else {
+					// Режим "Точное совпадение"
+					characteristicSelect.disabled = false;
+					characteristicSelect.style.opacity = '1';
+					keywordsSelect.disabled = true;
+					keywordsSelect.style.opacity = '0.5';
+				}
+			});
+			
+			// Кнопка анализа
+			analyzeBtn.addEventListener('click', analyzeProduct);
+			
+			// Кнопка сброса
+			resetBtn.addEventListener('click', resetForm);
+			
+			// Очистка дат
+			clearDatesBtn.addEventListener('click', function() {
+				document.getElementById('date-from').value = '';
+				document.getElementById('date-to').value = '';
+			});
+			
+			// Переключение нормализации
+			showNormalizedCheckbox.addEventListener('change', function() {
+				if (currentProductData) {
+					updateLineChart(this.checked);
+				}
+			});
+		}
+
         
         // Загрузка товаров по категории
         async function loadProducts(categoryId) {
@@ -315,36 +392,130 @@
                 showMessage('Не удалось загрузить товары', 'error');
             }
         }
+		
+				
+		// Загрузка характеристик товара
+		async function loadCharacteristics(categoryId, productName) {
+			try {
+				console.log('Загрузка характеристик для:', productName);
+				
+				const url = `api/api.php?request=product-prices&category_id=${categoryId}&product_name=${encodeURIComponent(productName)}&limit=100`;
+				const response = await fetch(url);
+				const result = await response.json();
+				
+				// Получаем характеристики из ответа API
+				const purchases = result.data?.purchases || [];
+				const characteristicsSet = new Set();
+				
+				purchases.forEach(p => {
+					if (p.characteristic && p.characteristic.trim()) {
+						characteristicsSet.add(p.characteristic);
+					}
+				});
+				
+				const characteristics = Array.from(characteristicsSet).sort();
+				const characteristicSelect = document.getElementById('characteristic-select');
+				
+				if (!characteristicSelect) {
+					console.error('Элемент characteristic-select не найден');
+					return;
+				}
+				
+				characteristicSelect.innerHTML = '<option value="">-- Все характеристики --</option>';
+				
+				if (characteristics.length === 0) {
+					characteristicSelect.innerHTML = '<option value="">-- Нет характеристик для этого товара --</option>';
+					characteristicSelect.disabled = true;
+				} else {
+					characteristics.forEach(char => {
+						const option = document.createElement('option');
+						option.value = char;
+						// Ограничиваем длину отображаемого текста
+						const displayChar = char.length > 60 ? char.substring(0, 57) + '...' : char;
+						option.textContent = displayChar;
+						option.title = char; // Полный текст при наведении
+						characteristicSelect.appendChild(option);
+					});
+					characteristicSelect.disabled = false;
+					console.log(`Загружено характеристик: ${characteristics.length}`);
+				}
+				
+			} catch (error) {
+				console.error('Ошибка загрузки характеристик:', error);
+				const characteristicSelect = document.getElementById('characteristic-select');
+				if (characteristicSelect) {
+					characteristicSelect.innerHTML = '<option value="">-- Ошибка загрузки --</option>';
+					characteristicSelect.disabled = true;
+				}
+			}
+		}
+
         
-        // Загрузка характеристик товара
-        async function loadCharacteristics(categoryId, productName) {
-            try {
-                // Получаем характеристики через API
-                const url = `api/api.php?request=product-prices&category_id=${categoryId}&product_name=${encodeURIComponent(productName)}&limit=1`;
-                const response = await fetch(url);
-                const result = await response.json();
-                
-                const characteristics = result.data?.product?.characteristics || [];
-                
-                const characteristicSelect = document.getElementById('characteristic-select');
-                
-                characteristicSelect.innerHTML = '<option value="">-- Все характеристики --</option>';
-                characteristics.forEach(char => {
-                    characteristicSelect.innerHTML += `<option value="${char}">${char}</option>`;
-                });
-                
-                console.log(`Загружено характеристик: ${characteristics.length}`);
-                
-            } catch (error) {
-                console.error('Ошибка загрузки характеристик:', error);
-            }
-        }
+        // Загрузка ключевых слов для товара (вместо характеристик)
+		async function loadKeywords(categoryId, productName) {
+			try {
+				console.log('Загрузка ключевых слов для:', productName);
+				
+				const url = `api/api.php?request=product-prices&category_id=${categoryId}&product_name=${encodeURIComponent(productName)}&limit=100`;
+				const response = await fetch(url);
+				const result = await response.json();
+				
+				const purchases = result.data?.purchases || [];
+				console.log('Найдено покупок для извлечения ключевых слов:', purchases.length);
+				
+				const keywordsSet = new Set();
+				
+				purchases.forEach(p => {
+					if (p.search_keywords && p.search_keywords.trim()) {
+						const words = p.search_keywords.split(/\s+/);
+						words.forEach(word => {
+							const cleanWord = word.toLowerCase().trim();
+							if (cleanWord.length > 2) {
+								keywordsSet.add(cleanWord);
+							}
+						});
+					}
+				});
+				
+				const keywords = Array.from(keywordsSet).sort();
+				const keywordsSelect = document.getElementById('keywords-select');
+				
+				if (!keywordsSelect) {
+					console.error('Элемент keywords-select не найден');
+					return;
+				}
+				
+				keywordsSelect.innerHTML = '';
+				
+				if (keywords.length === 0) {
+					keywordsSelect.innerHTML = '<option value="">-- Нет ключевых слов для этого товара --</option>';
+					keywordsSelect.disabled = true;
+				} else {
+					keywords.forEach(keyword => {
+						const option = document.createElement('option');
+						option.value = keyword;
+						option.textContent = keyword;
+						keywordsSelect.appendChild(option);
+					});
+					keywordsSelect.disabled = false;
+					console.log(`Загружено ключевых слов: ${keywords.length}`);
+				}
+				
+			} catch (error) {
+				console.error('Ошибка загрузки ключевых слов:', error);
+				const keywordsSelect = document.getElementById('keywords-select');
+				if (keywordsSelect) {
+					keywordsSelect.innerHTML = '<option value="">-- Ошибка загрузки --</option>';
+					keywordsSelect.disabled = true;
+				}
+			}
+		}
         
         // Установка дат по умолчанию
         function setDefaultDates() {
             const today = new Date();
             const yearAgo = new Date();
-            yearAgo.setFullYear(today.getFullYear() - 6); // за 6 лет
+            yearAgo.setFullYear(today.getFullYear() - 1); // за 1 год
             
             const dateFrom = document.getElementById('date-from');
             const dateTo = document.getElementById('date-to');
@@ -355,192 +526,439 @@
         
         // Анализ товара
         async function analyzeProduct() {
-            const categoryId = document.getElementById('category-select').value;
-            const productName = document.getElementById('product-select').value;
-            const characteristic = document.getElementById('characteristic-select').value;
-            const dateFrom = document.getElementById('date-from').value;
-            const dateTo = document.getElementById('date-to').value;
-            
-            if (!categoryId || !productName) {
-                showMessage('Выберите категорию и товар', 'warning');
-                return;
-            }
-            
-            try {
-                showMessage('Загрузка данных...', 'info');
-                
-                // Загружаем данные
-                const data = await window.priceAnalyzer.loadProductData(
-                    categoryId, 
-                    productName, 
-                    characteristic || null,
-                    dateFrom || null,
-                    dateTo || null
-                );
-                
-                currentProductData = data;
-                currentPurchases = data.purchases;
-                
-                // Проверяем достаточно ли данных
-                if (!window.priceAnalyzer.hasEnoughData(data.purchases, 2)) {
-                    showMessage(
-                        'Это единственная покупка товара - невозможно построить график динамики цены', 
-                        'warning'
-                    );
-                } else {
-                    hideMessage();
-                }
-                
-                // Обновляем интерфейс
-                updateProductInfo(data.product);
-                updateStatistics(data.statistics);
-                updateCharts(data);
-                updatePurchaseTable(data.purchases);
-                
-                // Показываем панели
-                document.getElementById('stats-panel').style.display = 'block';
-                document.getElementById('charts-container').style.display = 'block';
-                
-            } catch (error) {
-                console.error('Ошибка анализа:', error);
-                showMessage('Ошибка при анализе товара: ' + error.message, 'error');
-            }
-        }
+			const categoryId = document.getElementById('category-select').value;
+			const productName = document.getElementById('product-select').value;
+			const searchMode = document.getElementById('search-mode').value;
+			const dateFrom = document.getElementById('date-from').value;
+			const dateTo = document.getElementById('date-to').value;
+			
+			if (!categoryId || !productName) {
+				showMessage('Выберите категорию и товар', 'warning');
+				return;
+			}
+			
+			let searchValue = null;
+			
+			if (searchMode === 'keywords') {
+				// Получаем выбранные ключевые слова
+				const keywordsSelect = document.getElementById('keywords-select');
+				const selectedKeywords = Array.from(keywordsSelect.selectedOptions)
+					.map(opt => opt.value)
+					.filter(v => v && v !== '');
+				
+				if (selectedKeywords.length === 0) {
+					showMessage('Выберите хотя бы одно ключевое слово для поиска', 'warning');
+					return;
+				}
+				
+				searchValue = selectedKeywords.join(' ');
+				console.log('Поиск по ключевым словам:', searchValue);
+				
+			} else {
+				// Режим точного совпадения
+				const characteristicSelect = document.getElementById('characteristic-select');
+				searchValue = characteristicSelect.value;
+				
+				// Разрешаем пустое значение (означает "Все характеристики")
+				if (!searchValue || searchValue === '') {
+					searchValue = null;
+					console.log('Поиск по всем характеристикам');
+				} else {
+					console.log('Поиск по характеристике:', searchValue);
+				}
+			}
+			
+			try {
+				showMessage('Загрузка данных...', 'info');
+				
+				const data = await window.priceAnalyzer.loadProductData(
+					categoryId, 
+					productName, 
+					searchValue,
+					dateFrom || null,
+					dateTo || null,
+					searchMode
+				);
+				
+				console.log('Данные загружены, покупок:', data.purchases?.length);
+				
+				currentProductData = data;
+				currentPurchases = data.purchases || [];
+				currentStatistics = data.statistics;
+				
+				if (!window.priceAnalyzer.hasEnoughData(currentPurchases, 2)) {
+					showMessage(
+						'Недостаточно данных для построения графика динамики цены', 
+						'warning'
+					);
+				} else {
+					hideMessage();
+				}
+				
+				updateProductInfo(data.product);
+				updateStatisticsDisplay(data);
+				updateCharts(data);
+				updatePurchaseTable(currentPurchases);
+				
+				// Показываем панели
+				const statsPanel = document.getElementById('stats-panel');
+				const chartsContainer = document.getElementById('charts-container');
+				
+				if (statsPanel) statsPanel.style.display = 'block';
+				if (chartsContainer) chartsContainer.style.display = 'block';
+				
+			} catch (error) {
+				console.error('Ошибка анализа:', error);
+				showMessage('Ошибка при анализе товара: ' + error.message, 'error');
+			}
+		}
         
         // Обновление информации о товаре
         function updateProductInfo(product) {
-            const badge = document.getElementById('product-badge');
-            badge.innerHTML = `
-                ${product.category_icon || '📦'} ${product.category_name} → 
-                <strong>${product.name}</strong>
-                (${product.total_purchases} ${getPlural(product.total_purchases, 'покупка', 'покупки', 'покупок')})
-            `;
-        }
+			const badge = document.getElementById('product-badge');
+			if (badge) {
+				badge.innerHTML = `
+					${product.category_icon || '📦'} ${product.category_name} → 
+					<strong>${product.name}</strong>
+					(${product.total_purchases || 0} ${getPlural(product.total_purchases || 0, 'покупка', 'покупки', 'покупок')})
+				`;
+			}
+		}
+
+		// ============================================
+		// ФУНКЦИИ СТАТИСТИКИ (ИСПРАВЛЕННЫЕ)
+		// ============================================
         
-        // Обновление статистики
-        function updateStatistics(stats) {
-            const container = document.getElementById('stats-content');
-            
-            container.innerHTML = `
-                <div class="stat-card main">
-                    <div class="stat-title">💰 Цена</div>
-                    <div class="stat-value">
-                        ${stats.last_price} <span class="stat-unit">₽</span>
-                    </div>
-                    <div class="stat-desc">
-                        Последняя покупка: ${formatDate(stats.lastDate)}
-                    </div>
-                </div>
-                
-                <div class="stat-card trend ${stats.trend === 'rising' ? 'trend-up' : 'trend-down'}">
-                    <div class="stat-title">${stats.trendEmoji} Динамика</div>
-                    <div class="stat-value">
-                        ${stats.priceChangePercent > 0 ? '+' : ''}${stats.priceChangePercent}%
-                    </div>
-                    <div class="stat-desc">
-                        ${stats.priceChange > 0 ? '+' : ''}${stats.priceChange} ₽ за период
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-title">📊 Средняя цена</div>
-                    <div class="stat-value">
-                        ${stats.avg_price} <span class="stat-unit">₽</span>
-                    </div>
-                    <div class="stat-desc">
-                        Мин: ${stats.min_price} ₽ / Макс: ${stats.max_price} ₽
-                    </div>
-                </div>
-                
-                ${stats.has_normalized ? `
-                <div class="stat-card normalized">
-                    <div class="stat-title">⚖️ Нормализованная цена</div>
-                    <div class="stat-value">
-                        ${stats.normalized_avg} <span class="stat-unit">₽/${stats.normalized_unit || 'кг'}</span>
-                    </div>
-                    <div class="stat-desc">
-                        Мин: ${stats.normalized_min} / Макс: ${stats.normalized_max} ₽
-                    </div>
-                </div>
-                ` : ''}
-            `;
-        }
+        /**
+		 * Отображение статистики по товару
+		 */
+		function displayProductStats(data) {
+			if (!data || !data.statistics) {
+				console.error('Нет данных для отображения статистики');
+				const statsContainer = document.getElementById('product-stats');
+				if (statsContainer) {
+					statsContainer.innerHTML = '<div class="no-data">Нет данных для отображения статистики</div>';
+				}
+				return;
+			}
+			
+			const stats = data.statistics;
+			const product = data.product;
+			
+			console.log('Отображаемая статистика:', stats);
+			
+			const statsContainer = document.getElementById('product-stats');
+			if (!statsContainer) return;
+			
+			// ВАЖНО: используем правильные имена полей из API
+			// API возвращает: first_price, last_price, avg_price, priceChange, priceChangePercent и т.д.
+			const firstDate = stats.firstDate || stats.first_date || null;
+			const lastDate = stats.lastDate || stats.last_date || null;
+			const firstPrice = stats.first_price || stats.firstPrice || 0;
+			const lastPrice = stats.last_price || stats.lastPrice || 0;
+			const avgPrice = stats.avg_price || stats.avgPrice || 0;
+			const minPrice = stats.min_price || stats.minPrice || 0;
+			const maxPrice = stats.max_price || stats.maxPrice || 0;
+			const priceChange = stats.price_change || stats.priceChange || 0;
+			const priceChangePercent = stats.price_change_percent || stats.priceChangePercent || 0;
+			const trend = stats.trend || 'stable';
+			const trendEmoji = stats.trend_emoji || stats.trendEmoji || '➡️';
+			const lastStore = stats.last_store || stats.lastStore || 'Магазин не указан';
+			const totalAmount = stats.total_amount || stats.totalAmount || 0;
+			const count = stats.count || 0;
+			
+			let html = `
+				<div class="stats-grid">
+					<!-- Карточка: Последняя покупка -->
+					<div class="stat-card">
+						<div class="stat-title">📅 Последняя покупка</div>
+						<div class="stat-value">${formatDateForDisplay(lastDate)}</div>
+						<div class="stat-desc">${lastStore}</div>
+					</div>
+					
+					<!-- Карточка: Цена последней покупки -->
+					<div class="stat-card">
+						<div class="stat-title">💰 Цена за единицу</div>
+						<div class="stat-value">${formatNumberWithSpaces(lastPrice)} ₽</div>
+						<div class="stat-desc">за ${getUnitLabel(product)}</div>
+					</div>
+					
+					<!-- Карточка: Динамика цены -->
+					<div class="stat-card ${trend === 'rising' ? 'trend-up' : trend === 'falling' ? 'trend-down' : ''}">
+						<div class="stat-title">📈 Динамика цены</div>
+						<div class="stat-value">${trendEmoji} ${Math.abs(priceChangePercent)}%</div>
+						<div class="stat-desc">${priceChange > 0 ? 'рост' : priceChange < 0 ? 'снижение' : 'стабильно'}</div>
+					</div>
+					
+					<!-- Карточка: Изменение за период -->
+					<div class="stat-card">
+						<div class="stat-title">📊 Изменение за период</div>
+						<div class="stat-value ${priceChange > 0 ? 'trend-up' : priceChange < 0 ? 'trend-down' : ''}">
+							${priceChange > 0 ? '+' : ''}${formatNumberWithSpaces(priceChange)} ₽
+						</div>
+						<div class="stat-desc">с ${formatDateForDisplay(firstDate)}</div>
+					</div>
+					
+					<!-- Карточка: Средняя цена -->
+					<div class="stat-card">
+						<div class="stat-title">📊 Средняя цена</div>
+						<div class="stat-value">${formatNumberWithSpaces(avgPrice)} ₽</div>
+						<div class="stat-desc">за ${getUnitLabel(product)}</div>
+					</div>
+					
+					<!-- Карточка: Мин / Макс -->
+					<div class="stat-card">
+						<div class="stat-title">📊 Диапазон цен</div>
+						<div class="stat-value">
+							<span class="price-min">${formatNumberWithSpaces(minPrice)}</span>
+							<span class="price-sep"> — </span>
+							<span class="price-max">${formatNumberWithSpaces(maxPrice)}</span> ₽
+						</div>
+						<div class="stat-desc">за ${getUnitLabel(product)}</div>
+					</div>
+					
+					<!-- Карточка: Всего покупок -->
+					<div class="stat-card">
+						<div class="stat-title">🛒 Всего покупок</div>
+						<div class="stat-value">${count}</div>
+						<div class="stat-desc">на сумму ${formatNumberWithSpaces(totalAmount)} ₽</div>
+					</div>
+				</div>
+			`;
+			
+			// Если есть нормализованные цены
+			if (stats.has_normalized || stats.hasNormalized) {
+				const normalizedAvg = stats.normalized_avg || stats.normalizedAvg;
+				const normalizedUnit = stats.normalized_unit || stats.normalizedUnit;
+				
+				if (normalizedAvg && normalizedUnit) {
+					html += `
+						<div class="stats-grid" style="margin-top: 15px;">
+							<div class="stat-card normalized">
+								<div class="stat-title">📐 Нормализованная цена</div>
+								<div class="stat-value">${formatNumberWithSpaces(normalizedAvg)} ₽</div>
+								<div class="stat-desc">за ${normalizedUnit}</div>
+							</div>
+						</div>
+					`;
+				}
+			}
+			
+			statsContainer.innerHTML = html;
+			console.log('Статистика отображена');
+		}
+
+		/**
+		 * Форматирование даты для отображения
+		 */
+		function formatDateForDisplay(dateStr) {
+			if (!dateStr) return '—';
+			
+			// Если пришёл объект Date или строка в формате ISO
+			let date;
+			if (typeof dateStr === 'string' && dateStr.includes('-')) {
+				const [year, month, day] = dateStr.split('-');
+				date = new Date(year, month - 1, day);
+			} else {
+				date = new Date(dateStr);
+			}
+			
+			if (isNaN(date.getTime())) {
+				console.warn('Invalid date:', dateStr);
+				return dateStr;
+			}
+			
+			return date.toLocaleDateString('ru-RU', {
+				day: 'numeric',
+				month: 'long',
+				year: 'numeric'
+			});
+		}
+
+		/**
+		 * Форматирование числа с пробелами
+		 */
+		function formatNumberWithSpaces(value) {
+			if (value === null || value === undefined || isNaN(value)) return '0';
+			const num = parseFloat(value);
+			const [integerPart, decimalPart] = num.toFixed(2).split('.');
+			const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+			return decimalPart === '00' ? formattedInteger : `${formattedInteger}.${decimalPart}`;
+		}
+
+		/**
+		 * Получение единицы измерения для товара
+		 */
+		function getUnitLabel(product) {
+			if (product && product.normalized_unit) {
+				return product.normalized_unit;
+			}
+			return 'кг'; // По умолчанию для продуктов
+		}
+
+		/**
+		 * Обновление статистики на странице (ОСНОВНАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТИСТИКИ)
+		 */
+		function updateStatisticsDisplay(data) {
+			if (!data) return;
+			
+			console.log('updateStatisticsDisplay вызвана');
+			
+			// Обновляем статистику
+			displayProductStats(data);
+			
+			// Обновляем заголовок с информацией о товаре
+			const productInfo = document.getElementById('product-info');
+			if (productInfo && data.product) {
+				productInfo.innerHTML = `
+					<strong>${data.product.name}</strong>
+					<span class="product-category">${data.product.category_name}</span>
+				`;
+			}
+			
+			// Устанавливаем даты в фильтрах, если поля пустые
+			const dateFrom = document.getElementById('date-from');
+			const dateTo = document.getElementById('date-to');
+			
+			if (dateFrom && !dateFrom.value && data.statistics) {
+				const firstDate = data.statistics.first_date || data.statistics.firstDate;
+				if (firstDate) dateFrom.value = firstDate;
+			}
+			
+			if (dateTo && !dateTo.value && data.statistics) {
+				const lastDate = data.statistics.last_date || data.statistics.lastDate;
+				if (lastDate) dateTo.value = lastDate;
+			}
+		}
         
         // Обновление графиков
         function updateCharts(data) {
-            const showNormalized = document.getElementById('show-normalized').checked;
-            
-            // Линейный график
-            if (data.purchases.length >= 2) {
-                const lineData = window.priceAnalyzer.prepareLineChartData(data.purchases, showNormalized);
-                if (lineData) {
-                    window.priceCharts.createLineChart('line-chart', lineData, {
-                        title: `Динамика цены: ${data.product.name}`,
-                        yAxisLabel: `Цена, ₽${showNormalized && data.purchases[0].normalized ? '/' + data.purchases[0].normalizedUnit : ''}`
-                    });
-                }
-            }
-            
-            // Пузырьковая диаграмма
-            if (data.purchases.length >= 3) {
-                const bubbleData = window.priceAnalyzer.prepareBubbleChartData(data.purchases);
-                if (bubbleData) {
-                    window.priceCharts.createBubbleChart('bubble-chart', bubbleData, {
-                        title: `Цена и объем покупок: ${data.product.name}`,
-                        yAxisLabel: `Цена, ₽${showNormalized && data.purchases[0].normalized ? '/' + data.purchases[0].normalizedUnit : ''}`
-                    });
-                }
-            }
-        }
+			const showNormalized = document.getElementById('show-normalized').checked;
+			const analysisType = document.getElementById('analysis-type').value;
+			
+			let lineData = null;
+			let bubbleData = null;
+			
+			if (data.purchases && data.purchases.length >= 2) {
+				if (analysisType === 'unit_price') {
+					// Анализ по цене за единицу
+					lineData = window.priceAnalyzer.prepareLineChartData(data.purchases, showNormalized);
+					if (lineData && window.priceCharts) {
+						const unit = showNormalized && data.purchases[0].normalized 
+							? data.purchases[0].normalizedUnit 
+							: data.purchases[0].originalUnit;
+						lineData.datasets[0].label = `Цена, ₽/${unit}`;
+					}
+				} else {
+					// Анализ по стоимости покупки
+					lineData = window.priceAnalyzer.prepareLineChartDataByAmount(data.purchases);
+				}
+				
+				if (lineData && window.priceCharts) {
+					window.priceCharts.createLineChart('line-chart', lineData, {
+						title: `Динамика: ${data.product.name}`,
+						yAxisLabel: analysisType === 'unit_price' ? 'Цена' : 'Стоимость покупки'
+					});
+				}
+			}
+			
+			// Пузырьковая диаграмма (только для цены за единицу, для стоимости не имеет смысла)
+			if (data.purchases && data.purchases.length >= 3 && analysisType === 'unit_price') {
+				bubbleData = window.priceAnalyzer.prepareBubbleChartData(data.purchases);
+				if (bubbleData && window.priceCharts) {
+					window.priceCharts.createBubbleChart('bubble-chart', bubbleData, {
+						title: `Цена и объём покупок: ${data.product.name}`,
+						yAxisLabel: `Цена, ₽`
+					});
+				} else if (analysisType !== 'unit_price') {
+					// Скрываем или показываем сообщение, что пузырьковая диаграмма недоступна
+					const bubbleContainer = document.getElementById('bubble-chart')?.closest('.chart-container');
+					if (bubbleContainer) {
+						bubbleContainer.style.opacity = '0.5';
+						bubbleContainer.title = 'Пузырьковая диаграмма доступна только для анализа "Цена за единицу"';
+					}
+				}
+			}
+		}
+
+		// Обновление линейного графика при переключении типа анализа
+		function updateLineChart(showNormalized) {
+			if (currentProductData && currentProductData.purchases && currentProductData.purchases.length >= 2) {
+				const analysisType = document.getElementById('analysis-type').value;
+				let lineData = null;
+				
+				if (analysisType === 'unit_price') {
+					lineData = window.priceAnalyzer.prepareLineChartData(
+						currentProductData.purchases, 
+						showNormalized
+					);
+					if (lineData) {
+						const unit = showNormalized && currentProductData.purchases[0].normalized 
+							? currentProductData.purchases[0].normalizedUnit 
+							: currentProductData.purchases[0].originalUnit;
+						lineData.datasets[0].label = `Цена, ₽/${unit}`;
+					}
+				} else {
+					lineData = window.priceAnalyzer.prepareLineChartDataByAmount(currentProductData.purchases);
+				}
+				
+				if (lineData && window.priceCharts) {
+					window.priceCharts.createLineChart('line-chart', lineData, {
+						title: `Динамика: ${currentProductData.product.name}`,
+						yAxisLabel: analysisType === 'unit_price' ? 'Цена' : 'Стоимость покупки'
+					});
+				}
+			}
+		}
         
-        // Обновление линейного графика при переключении нормализации
-        function updateLineChart(showNormalized) {
-            if (currentProductData && currentProductData.purchases.length >= 2) {
-                const lineData = window.priceAnalyzer.prepareLineChartData(
-                    currentProductData.purchases, 
-                    showNormalized
-                );
-                
-                if (lineData) {
-                    window.priceCharts.createLineChart('line-chart', lineData, {
-                        title: `Динамика цены: ${currentProductData.product.name}`,
-                        yAxisLabel: `Цена, ₽${showNormalized && currentProductData.purchases[0].normalized ? '/' + currentProductData.purchases[0].normalizedUnit : ''}`
-                    });
-                }
-            }
-        }
+        // Обновление линейного графика
+         function updateLineChart(showNormalized) {
+			if (currentProductData && currentProductData.purchases && currentProductData.purchases.length >= 2) {
+				const lineData = window.priceAnalyzer.prepareLineChartData(
+					currentProductData.purchases, 
+					showNormalized
+				);
+				
+				if (lineData && window.priceCharts) {
+					window.priceCharts.createLineChart('line-chart', lineData, {
+						title: `Динамика цены: ${currentProductData.product.name}`,
+						yAxisLabel: `Цена, ₽${showNormalized && currentProductData.purchases[0].normalized ? '/' + currentProductData.purchases[0].normalizedUnit : ''}`
+					});
+				}
+			}
+		}
         
         // Обновление таблицы покупок
         function updatePurchaseTable(purchases) {
-            const tbody = document.getElementById('purchase-table-body');
-            
-            if (!purchases || purchases.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 40px;">
-                            Нет данных за выбранный период
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            tbody.innerHTML = purchases.map(p => {
-                const priceClass = p.price == currentProductData?.statistics?.min_price ? 'price-lowlight' : 
-                                  p.price == currentProductData?.statistics?.max_price ? 'price-highlight' : '';
-                
-                return `
-                    <tr>
-                        <td>${formatDate(p.date)}</td>
-                        <td class="${priceClass}">${parseFloat(p.price).toFixed(2)} ₽/${p.item}</td>
-                        <td>${p.normalized ? `${p.pricePerUnit.toFixed(2)} ₽/${p.normalizedUnit}` : '-'}</td>
-                        <td>${parseFloat(p.quantity).toFixed(3)} ${p.item}</td>
-                        <td><span class="store-badge">${p.store_name || 'Неизвестно'}</span></td>
-                        <td>${p.characteristic || '-'}</td>
-                    </tr>
-                `;
-            }).join('');
-        }
+			const tbody = document.getElementById('purchase-table-body');
+			
+			if (!purchases || purchases.length === 0) {
+				tbody.innerHTML = `
+					<tr>
+						<td colspan="6" style="text-align: center; padding: 40px;">
+							Нет данных за выбранный период
+						</td>
+					</tr>
+				`;
+				return;
+			}
+			
+			tbody.innerHTML = purchases.map(p => {
+				const priceClass = p.price == currentStatistics?.min_price ? 'price-lowlight' : 
+								  p.price == currentStatistics?.max_price ? 'price-highlight' : '';
+				
+				return `
+					<tr>
+						<td>${formatDate(p.date)}</td>
+						<td class="${priceClass}">${parseFloat(p.price).toFixed(2)} ₽/${p.item}</td>
+						<td>${p.normalized ? `${p.pricePerUnit.toFixed(2)} ₽/${p.normalizedUnit}` : '-'}</td>
+						<td>${parseFloat(p.quantity).toFixed(3)} ${p.item}</td>
+						<td><span class="store-badge">${p.store_name || 'Неизвестно'}</span></td>
+						<td>${p.characteristic || '-'}</td>
+					</tr>
+				`;
+			}).join('');
+		}
         
         // Сброс формы
         function resetForm() {
@@ -556,7 +974,9 @@
             document.getElementById('stats-panel').style.display = 'none';
             document.getElementById('charts-container').style.display = 'none';
             
-            window.priceCharts.destroyAll();
+            if (window.priceCharts) {
+				window.priceCharts.destroyAll();
+			}
             
             hideMessage();
         }
