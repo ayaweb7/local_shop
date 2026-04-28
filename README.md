@@ -5,7 +5,7 @@
 shopping_tracker/				# Корень проекта (корневая директория)
 │
 ├── api/
-│   └── api.php					# Единый REST API (MySQLi) - Главный скрипт
+│   └── api.php					# Единый REST API (MySQLi) - Главный скрипт (единая точка входа)
 │
 ├── blocks/
 │   └── date_base.php			# Подключение к БД (MySQLi)
@@ -13,9 +13,10 @@ shopping_tracker/				# Корень проекта (корневая дирек�
 ├── js/
 │   ├── api.js					# API клиент для работы с PHP API
 │   ├── app.js					# Главное приложение (таблица)
+│   ├── app-export.js           # Функции экспорта данных
 │	├── admin.js				# Админ приложение
-│   ├── stats.js				# Табличная статистика
-│   ├── filters.js				# Общие фильтры
+│   ├── stats.js				# Табличная статистика (класс StatisticsManager)
+│   ├── filters.js				# Общие фильтры (класс FilterManager)
 │   │
 │   ├── charts.js				# ОСНОВНАЯ СИСТЕМА ГРАФИКОВ (классы)
 │   │   ├── ChartUtils
@@ -26,12 +27,13 @@ shopping_tracker/				# Корень проекта (корневая дирек�
 │   │   ├── ChartPair
 │   │   └── ChartManager
 │   │
-│   ├── price-analyzer.js		# Анализ цен
+│   ├── price-analyzer.js		# Анализ цен (класс PriceAnalyzer)
 │   ├── price-charts.js			# Графики для цен
-│   ├── data-exporter.js		# Экспорт данных
-│   ├── chart-settings.js		# Сохранение настроек
-│   ├── chart-animations.js		# Анимации
-│   ├── chart-performance.js	# Оптимизация
+│   ├── data-exporter.js		# Экспорт данных (CSV, JSON, SQL, XLS)
+│   ├── chart-settings.js		# Сохранение настроек (localStorage)
+│   ├── charts-ui.js            # UI для страницы графиков
+│   ├── chart-animations.js		# Анимации для графиков
+│   ├── chart-performance.js	# Оптимизация графиков
 │   │
 │   └── chart.min.js			# Локальная Chart.js библиотека
 │
@@ -41,10 +43,11 @@ shopping_tracker/				# Корень проекта (корневая дирек�
 ├── index.html			# Страница входа
 ├── app.html			# Главное приложение - Основная таблица покупок
 ├── admin.html			# Админ-панель (управление справочниками)
-├── stats.html			# Табличная статистика
-├── charts.html			# Графики и визуализация
-├── price-analysis.html	# Анализ цен (графики)
+├── stats.html			# Табличная статистика (Tabulator для магазинов и месяцев)
+├── charts.html			# Основные графики и общая визуализация
+├── price-analysis.html	# Анализ цен (специальная визуализация)
 │
+├── test/				# Тестовые и старые файлы (игнорируются Git)
 ├── .gitignore			# Файл, для инструкций отслеживания файлов Git
 ├── requirements.txt	# Список зависимостей (библиотек) проекта
 └── README.md			# Главное описание проекта (видно на GitHub)
